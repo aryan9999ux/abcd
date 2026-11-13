@@ -8,6 +8,7 @@ import { Meter } from "./Meter";
 import { accountMetrics } from "./metrics";
 import NoAccounts from "./NoAccounts";
 import RewardCard from "./RewardCard";
+import RulesPanel from "./RulesPanel";
 import Shell from "./Shell";
 import type { AccountRow, PlanRow } from "./types";
 import { useQuotes } from "./useQuotes";
@@ -96,6 +97,7 @@ export default function DashboardClient({ initialAccounts, plans, initialAccount
         </div>
       </div>
 
+      {account.status === "active" && <RulesPanel account={account} m={m} openCount={openCount} />}
       {account.phase === "funded" && account.status === "active" && <RewardCard accountId={account.id} onDone={data.refetch} />}
 
       <div className="tr-dcols">

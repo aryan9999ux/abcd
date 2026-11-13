@@ -26,6 +26,11 @@ export interface AccountRow {
   trading_days: number;
   breach_reason: string | null;
   created_at: string;
+  rules?: import("@/lib/rules").PlanRules | null;
+  peak_eod_balance?: number | null;
+  cycle_no?: number;
+  cycle_start_date?: string | null;
+  payouts_count?: number;
 }
 
 export interface PositionRow {
