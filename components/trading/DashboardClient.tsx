@@ -7,6 +7,7 @@ import { dateTime, inr, nameOfKey, num, pct, phaseLabel, statusLabel } from "./f
 import { Meter } from "./Meter";
 import { accountMetrics } from "./metrics";
 import NoAccounts from "./NoAccounts";
+import RewardCard from "./RewardCard";
 import Shell from "./Shell";
 import type { AccountRow, PlanRow } from "./types";
 import { useQuotes } from "./useQuotes";
@@ -94,6 +95,8 @@ export default function DashboardClient({ initialAccounts, plans, initialAccount
           <div className="s">{account.phase === "funded" ? "Estimate on current profit" : "Starts once the account is funded"}</div>
         </div>
       </div>
+
+      {account.phase === "funded" && account.status === "active" && <RewardCard accountId={account.id} onDone={data.refetch} />}
 
       <div className="tr-dcols">
         <div className="tr-stack">

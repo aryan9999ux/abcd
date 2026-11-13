@@ -42,7 +42,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const toast = useToast();
 
   const [sel, setSel] = useState<InstrumentRef>(() => ({ underlying: "NIFTY", segment: "FUT", expiry: expiriesFor("NIFTY")[0] }));
-  const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "" });
+  const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
   const [tf, setTf] = useState(1);
   const [tab, setTab] = useState<Tab>("pos");
   const [busy, setBusy] = useState(false);
@@ -97,7 +97,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   function pick(ref: InstrumentRef, side?: Side) {
     setSel(ref);
-    setTicket((t) => ({ ...t, price: "", ...(side ? { side } : {}) }));
+    setTicket((t) => ({ ...t, price: "", stopLoss: "", ...(side ? { side } : {}) }));
     setMsg(null);
   }
 
@@ -118,6 +118,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       orderType,
       qty: units,
       ...(orderType !== "Market" && price != null ? { price } : {}),
+      ...(Number(ticket.stopLoss) > 0 ? { stopLoss: Number(ticket.stopLoss) } : {}),
     });
     setBusy(false);
     if (res.ok) {

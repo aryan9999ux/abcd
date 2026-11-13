@@ -1,7 +1,7 @@
 // Run: npx tsx lib/engine/selftest.ts
 import assert from "node:assert/strict";
 import {
-  classifyOrder, evaluateRisk, hasMargin, increasingQty, isTriggered, netFill, unrealized, validateInstrument,
+  classifyOrder, directionOf, drawdownFloor, evaluateRisk, pastEntryCutoff, payoutCheck, profitableDays, riskAmount, stopOnCorrectSide, hasMargin, increasingQty, isTriggered, netFill, unrealized, validateInstrument,
 } from "./pure";
 import { EXPIRIES, lotSize, marginRequired, optionGreeks, priceInstrument } from "../market/pricing";
 
@@ -55,14 +55,44 @@ t("triggers", () => {
   assert.equal(isTriggered("Stop", "Sell", 99, 98.9), true);
   assert.equal(isTriggered("Stop", "Buy", 101, 100.5), false);
 });
-t("risk limits", () => {
-  const base = { accountSize: 100000, dayStartEquity: 100000, maxDailyPct: 4, maxOverallPct: 8 };
+t("risk limits (static)", () => {
+  const base = { accountSize: 100000, dayStartEquity: 100000, dailyLossPct: 4, drawdownPct: 8, drawdownType: "static" as const, peakEod: 100000 };
   assert.equal(evaluateRisk({ ...base, equity: 98000 }).breach, null);
   assert.equal(evaluateRisk({ ...base, equity: 96000 }).breach, "daily_loss_limit");
   assert.equal(evaluateRisk({ ...base, equity: 92000 }).breach, "overall_loss_limit");
   assert.equal(Math.round(evaluateRisk({ ...base, equity: 96000 }).overallUsedPct), 50);
-  // after a profitable day the daily floor trails the day-start equity
   assert.equal(evaluateRisk({ ...base, dayStartEquity: 110000, equity: 105000 }).breach, "daily_loss_limit");
+  assert.equal(drawdownFloor({ ...base, peakEod: 130000 }), 92000); // static ignores the peak
+});
+t("trailing drawdown floor", () => {
+  const b = { accountSize: 1000000, drawdownPct: 10, drawdownType: "trailing" as const };
+  assert.equal(drawdownFloor({ ...b, peakEod: 1000000 }), 900000);
+  assert.equal(drawdownFloor({ ...b, peakEod: 1050000 }), 950000);
+  assert.equal(drawdownFloor({ ...b, peakEod: 1100000 }), 1000000); // locks at the start
+  assert.equal(drawdownFloor({ ...b, peakEod: 1300000 }), 1000000); // and stays there
+});
+t("entry cutoff, direction, stop side", () => {
+  const ist = (h: number, m: number) => Date.UTC(2026, 10, 16, h, m) - 330 * 60 * 1000;
+  assert.equal(pastEntryCutoff(ist(15, 14), "15:15"), false);
+  assert.equal(pastEntryCutoff(ist(15, 15), "15:15"), true);
+  assert.equal(directionOf("CE", "Buy"), "long");
+  assert.equal(directionOf("PE", "Buy"), "short");
+  assert.equal(directionOf("PE", "Sell"), "long");
+  assert.equal(stopOnCorrectSide("Buy", 128, 142), true);
+  assert.equal(stopOnCorrectSide("Sell", 128, 142), false);
+  assert.equal(riskAmount(142, 128, 1000), 14000);
+});
+t("profitable days and payout gates", () => {
+  assert.equal(profitableDays([2000, 1700, 2500, -400], 1000000, 0.2), 2);
+  const ok = { accountSize: 1000000, balance: 1040000, flat: true, kycVerified: true, daysSinceCycleStart: 14, profitableDays: 7, needDays: 7, cycleDays: 14, minProfitPct: 3, minPayoutInr: 5000, splitPct: 80, underReview: false };
+  const r = payoutCheck(ok);
+  assert.equal(r.ok, true);
+  assert.equal(r.payable, 32000);
+  assert.equal(payoutCheck({ ...ok, balance: 1020000 }).ok, false);
+  assert.equal(payoutCheck({ ...ok, flat: false }).ok, false);
+  assert.equal(payoutCheck({ ...ok, daysSinceCycleStart: 13 }).ok, false);
+  assert.equal(payoutCheck({ ...ok, profitableDays: 6 }).ok, false);
+  assert.equal(payoutCheck({ ...ok, kycVerified: false }).ok, false);
 });
 t("margin headroom", () => {
   assert.equal(hasMargin(5000, 100000, 90000), true);

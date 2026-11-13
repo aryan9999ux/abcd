@@ -51,29 +51,91 @@ export function isTriggered(type: OrderType, side: Side, price: number, ltp: num
   return true;
 }
 
-export type Breach = "overall_loss_limit" | "daily_loss_limit";
+export type Breach = "overall_loss_limit" | "daily_loss_limit" | "max_positions";
 
 export interface RiskInput {
   accountSize: number;
   dayStartEquity: number;
   equity: number;
-  maxDailyPct: number;
-  maxOverallPct: number;
+  dailyLossPct: number;
+  drawdownPct: number;
+  drawdownType: "static" | "trailing";
+  /** Highest end-of-day closed balance so far (trailing only). */
+  peakEod: number;
+}
+
+/** Lowest equity allowed. Static: fixed. Trailing: peak minus the drawdown, never above the starting balance (it locks there). */
+export function drawdownFloor(r: Pick<RiskInput, "accountSize" | "drawdownPct" | "drawdownType" | "peakEod">): number {
+  const room = (r.accountSize * r.drawdownPct) / 100;
+  if (r.drawdownType === "static") return round2(r.accountSize - room);
+  return round2(Math.min(r.accountSize, Math.max(r.peakEod, r.accountSize) - room));
 }
 
 /** Loss limits are measured against the starting account size. Returns the breach, if any, and how much of each limit is used. */
 export function evaluateRisk(r: RiskInput) {
-  const overallFloor = r.accountSize * (1 - r.maxOverallPct / 100);
-  const dailyFloor = r.dayStartEquity - (r.accountSize * r.maxDailyPct) / 100;
-  const overallAllowed = r.accountSize - overallFloor;
-  const dailyAllowed = r.dayStartEquity - dailyFloor;
+  const overallFloor = drawdownFloor(r);
+  const dailyRoom = (r.accountSize * r.dailyLossPct) / 100;
+  const dailyFloor = r.dayStartEquity - dailyRoom;
+  const overallRoom = Math.max(1, Math.max(r.peakEod, r.accountSize) - overallFloor);
   const breach: Breach | null = r.equity <= overallFloor ? "overall_loss_limit" : r.equity <= dailyFloor ? "daily_loss_limit" : null;
   return {
     breach,
-    overallUsedPct: Math.max(0, ((r.accountSize - r.equity) / overallAllowed) * 100),
-    dailyUsedPct: Math.max(0, ((r.dayStartEquity - r.equity) / dailyAllowed) * 100),
+    overallFloor,
+    dailyFloor: round2(dailyFloor),
+    overallUsedPct: Math.max(0, ((Math.max(r.peakEod, r.accountSize) - r.equity) / overallRoom) * 100),
+    dailyUsedPct: Math.max(0, ((r.dayStartEquity - r.equity) / dailyRoom) * 100),
   };
 }
+
+/** Minutes after midnight, India time. */
+export const istMinutes = (now: number) => {
+  const d = new Date(now + 330 * 60 * 1000);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+};
+/** True from the cutoff time ("15:15") to midnight: no new positions. */
+export function pastEntryCutoff(now: number, cutoff: string): boolean {
+  const [h, m] = cutoff.split(":").map(Number);
+  return istMinutes(now) >= h * 60 + m;
+}
+
+/** Market direction of a position: long calls, short puts, long futures and stocks are "long". */
+export function directionOf(segment: string, side: Side): "long" | "short" {
+  const bullish = segment === "PE" ? side === "Sell" : side === "Buy";
+  return bullish ? "long" : "short";
+}
+
+/** A stop must sit on the losing side of the entry price. */
+export const stopOnCorrectSide = (side: Side, stop: number, entry: number) => (side === "Buy" ? stop < entry : stop > entry);
+export const riskAmount = (entry: number, stop: number, qty: number) => round2(Math.abs(entry - stop) * qty);
+
+/** Number of days in the list whose closed profit is at least pct% of the starting balance. */
+export function profitableDays(pnls: number[], accountSize: number, pct: number): number {
+  const need = (accountSize * pct) / 100;
+  return pnls.filter((p) => p >= need - 1e-9).length;
+}
+
+export interface PayoutCheck { ok: boolean; reasons: string[]; profit: number; payable: number }
+export function payoutCheck(i: {
+  accountSize: number; balance: number; flat: boolean; kycVerified: boolean; daysSinceCycleStart: number | null;
+  profitableDays: number; needDays: number; cycleDays: number; minProfitPct: number; minPayoutInr: number; splitPct: number; underReview: boolean;
+}): PayoutCheck {
+  const profit = round2(i.balance - i.accountSize);
+  const payable = round2(Math.max(0, profit) * (i.splitPct / 100));
+  const reasons: string[] = [];
+  if (i.underReview) reasons.push("A payout request is already under review.");
+  if (!i.flat) reasons.push("Close all open positions first.");
+  if (!i.kycVerified) reasons.push("KYC is not verified yet.");
+  if (i.daysSinceCycleStart == null || i.daysSinceCycleStart < i.cycleDays) {
+    reasons.push(`Payouts open ${i.cycleDays} days after the cycle starts.`);
+  }
+  if (i.profitableDays < i.needDays) reasons.push(`You need ${i.needDays} profitable days in this cycle (you have ${i.profitableDays}).`);
+  if (profit < (i.accountSize * i.minProfitPct) / 100) reasons.push(`Closed profit must be at least ${i.minProfitPct}% of the starting balance.`);
+  if (payable < i.minPayoutInr) reasons.push(`The minimum payout is ₹${i.minPayoutInr.toLocaleString("en-IN")}.`);
+  return { ok: reasons.length === 0, reasons, profit, payable };
+}
+
+/** Whole IST days between two YYYY-MM-DD dates. */
+export const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 
 export const hasMargin = (need: number, equity: number, used: number) => need <= equity - used + 1e-9;
 

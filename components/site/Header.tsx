@@ -33,6 +33,7 @@ export default async function Header() {
             <Link href="/#plans">Plans</Link>
             <Link href="/#how">How it works</Link>
             <Link href="/#rewards">Rewards</Link>
+            <Link href="/rules">Rules</Link>
             <Link href="/#faq">FAQ</Link>
             {user && <Link href="/dashboard">Dashboard</Link>}
             {user && <Link href="/terminal">Terminal</Link>}

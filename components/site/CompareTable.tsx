@@ -10,7 +10,7 @@ export default function CompareTable({ plans, prices }: { plans: Plan[]; prices:
     ["Profit target", targetText],
     ["Max daily loss", (p) => `${Number(p.max_daily_loss_pct)}%`],
     ["Max overall loss", (p) => `${Number(p.max_overall_loss_pct)}%`],
-    ["Minimum trading days", daysText],
+    ["Profitable days needed", daysText],
     ["Reward split", splitText, "up"],
     [`Starting fee, ${sizeLabel(startSize)} account`, (p) => (fee(p.key) != null ? inr(fee(p.key)!) : "-"), "mono"],
   ];

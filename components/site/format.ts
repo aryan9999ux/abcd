@@ -20,7 +20,7 @@ export const evaluationText = (p: Plan) =>
   p.evaluation_phases === 0 ? "None" : p.evaluation_phases === 1 ? "One phase" : "Two phases";
 
 export const daysText = (p: Plan) =>
-  p.evaluation_phases === 2 ? `${p.min_trading_days} per phase` : `${p.min_trading_days} trading days`;
+  p.evaluation_phases === 2 ? `${p.min_trading_days} profitable days per phase` : `${p.min_trading_days} profitable days`;
 
 export const splitText = (p: Plan) => `${Number(p.reward_split_pct)} / ${100 - Number(p.reward_split_pct)}`;
 

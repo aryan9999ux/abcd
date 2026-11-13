@@ -9,6 +9,7 @@ export interface TicketState {
   type: OrderType;
   qty: string;
   price: string;
+  stopLoss: string;
 }
 
 interface Props {
@@ -41,6 +42,8 @@ export default function OrderTicket({ inst, ltp, spot, state, onChange, availabl
     units <= 0 ? "Enter a quantity of 1 or more." :
     needsPrice && !(limit > 0) ? "Enter a price for this order." :
     ltp == null ? "Waiting for prices." : null;
+  const stop = Number(state.stopLoss);
+  const risk = px != null && stop > 0 && units > 0 ? Math.abs(px - stop) * units : null;
   const blocked = disabledReason ?? invalid;
   const set = (patch: Partial<TicketState>) => onChange({ ...state, ...patch });
 
@@ -71,6 +74,11 @@ export default function OrderTicket({ inst, ltp, spot, state, onChange, availabl
           <input type="number" step={0.05} value={state.price} onChange={(e) => set({ price: e.target.value })} />
         </label>
       )}
+      <label className="tr-f">
+        Stop loss price (required to open a trade)
+        <input type="number" step={0.05} value={state.stopLoss} placeholder={state.side === "Buy" ? "Below your buy price" : "Above your sell price"} onChange={(e) => set({ stopLoss: e.target.value })} />
+      </label>
+      <div className="tr-ln"><span className="tr-muted">Risk at stop</span><span className="tr-mono">{risk == null ? "—" : inr(risk)}</span></div>
       <div className="tr-ln"><span className="tr-muted">Quantity</span><span className="tr-mono">{units.toLocaleString("en-IN")}</span></div>
       <div className="tr-ln"><span className="tr-muted">Order value</span><span className="tr-mono">{px == null ? "—" : inr(units * px)}</span></div>
       <div className="tr-ln">

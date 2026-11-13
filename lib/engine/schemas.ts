@@ -13,8 +13,11 @@ export const placeOrderSchema = z.object({
   orderType: z.enum(["Market", "Limit", "Stop"]),
   qty: z.number().int("Quantity must be a whole number").positive().max(1_000_000),
   price: z.number().positive().max(10_000_000).nullish(),
+  stopLoss: z.number().positive().max(10_000_000).nullish(),
 });
 export const cancelOrderSchema = z.object({ accountId: uuid, orderId: uuid });
 export const closePositionSchema = z.object({ accountId: uuid, instrument: z.string().min(3).max(120) });
 export const closeAllSchema = z.object({ accountId: uuid });
 export const checkoutSchema = z.object({ planKey: z.string().min(1).max(40), accountSize: z.number().int().positive() });
+
+export const payoutRequestSchema = z.object({ accountId: uuid });

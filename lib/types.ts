@@ -33,6 +33,8 @@ export interface PlaceOrderRequest extends InstrumentRef {
   qty: number;
   /** Required for Limit and Stop. Ignored for Market. */
   price?: number;
+  /** Required when the order opens or adds to a position. */
+  stopLoss?: number;
 }
 
 export interface CancelOrderRequest { accountId: string; orderId: string }

@@ -7,9 +7,11 @@ import { instrumentKey, parseInstrumentKey, type CheckoutRequest, type Instrumen
 import { HttpError } from "./http";
 import { withLock } from "./lock";
 import {
-  classifyOrder, evaluateRisk, hasMargin, increasingQty, isTriggered, istDate, netFill, opposite,
-  round2, strikeInRange, unrealized, validateInstrument, type Breach, type PositionState,
+  classifyOrder, daysBetween, directionOf, evaluateRisk, hasMargin, increasingQty, isTriggered, istDate, netFill, opposite,
+  pastEntryCutoff, payoutCheck, profitableDays, riskAmount, round2, stopOnCorrectSide, strikeInRange, unrealized, validateInstrument,
+  type Breach, type PositionState,
 } from "./pure";
+import { PLAN_RULES, type PlanRules } from "../rules";
 
 /*
  * Concurrency note: every write for an account runs inside an in-process lock (lock.ts) and the writes are
@@ -41,10 +43,11 @@ function must(res: { data: any; error: { message: string } | null }, what: strin
 interface AccountRow {
   id: string; user_id: string; plan_key: string; account_size: number; phase: string; status: string;
   balance: number; day_start_equity: number; trading_days: number; day_start_date: string | null;
-  last_trading_date: string | null; breach_reason: string | null;
+  last_trading_date: string | null; breach_reason: string | null; rules: PlanRules; peak_eod_balance: number;
+  cycle_no: number; cycle_start_date: string | null; payouts_count: number; purchase_id: string | null;
 }
-interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number }
-interface Ctx { sb: Sb; acct: AccountRow; maxDailyPct: number; maxOverallPct: number; positions: PosRow[]; now: number }
+interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number; stop_loss: number | null; opened_at: string }
+interface Ctx { sb: Sb; acct: AccountRow; positions: PosRow[]; now: number }
 
 const num = (v: unknown) => Number(v);
 function toAccount(r: Record<string, unknown>): AccountRow {
@@ -53,6 +56,10 @@ function toAccount(r: Record<string, unknown>): AccountRow {
     phase: String(r.phase), status: String(r.status), balance: num(r.balance), day_start_equity: num(r.day_start_equity),
     trading_days: num(r.trading_days), day_start_date: (r.day_start_date as string) ?? null,
     last_trading_date: (r.last_trading_date as string) ?? null, breach_reason: (r.breach_reason as string) ?? null,
+    rules: (r.rules as PlanRules | null) ?? PLAN_RULES[String(r.plan_key)] ?? PLAN_RULES.one_step,
+    peak_eod_balance: r.peak_eod_balance == null ? num(r.account_size) : num(r.peak_eod_balance),
+    cycle_no: num(r.cycle_no ?? 0), cycle_start_date: (r.cycle_start_date as string) ?? null,
+    payouts_count: num(r.payouts_count ?? 0), purchase_id: (r.purchase_id as string) ?? null,
   };
 }
 
@@ -62,10 +69,11 @@ async function loadCtx(sb: Sb, accountId: string, userId?: string): Promise<Ctx>
   const row = must(await q.maybeSingle(), "load account");
   if (!row) throw new HttpError(404, "Account not found.");
   const acct = toAccount(row);
-  const plan = must(await sb.from("plans").select("max_daily_loss_pct,max_overall_loss_pct").eq("key", acct.plan_key).single(), "load plan");
-  const pos = must(await sb.from("positions").select("id,instrument,segment,side,qty,avg_price").eq("account_id", accountId), "load positions");
-  const positions = (pos ?? []).map((p: Record<string, unknown>) => ({ ...p, qty: num(p.qty), avg_price: num(p.avg_price) })) as PosRow[];
-  return { sb, acct, maxDailyPct: num(plan.max_daily_loss_pct), maxOverallPct: num(plan.max_overall_loss_pct), positions, now: Date.now() };
+  const pos = must(await sb.from("positions").select("id,instrument,segment,side,qty,avg_price,stop_loss,opened_at").eq("account_id", accountId), "load positions");
+  const positions = (pos ?? []).map((p: Record<string, unknown>) => ({
+    ...p, qty: num(p.qty), avg_price: num(p.avg_price), stop_loss: p.stop_loss == null ? null : num(p.stop_loss),
+  })) as PosRow[];
+  return { sb, acct, positions, now: Date.now() };
 }
 
 /* ---------- pricing the book ---------- */
@@ -92,20 +100,21 @@ function book(ctx: Ctx) {
 
 async function insertOrder(ctx: Ctx, o: {
   ref: InstrumentRef; side: Side; type: OrderType; qty: number; price: number | null;
-  status: "pending" | "filled" | "rejected"; reason?: string;
+  status: "pending" | "filled" | "rejected"; reason?: string; stopLoss?: number | null; risk?: number | null;
 }): Promise<string> {
   const row = must(await ctx.sb.from("orders").insert({
     user_id: ctx.acct.user_id, account_id: ctx.acct.id, instrument: instrumentKey(o.ref), segment: o.ref.segment,
     underlying: o.ref.underlying, strike: o.ref.strike ?? null, expiry: o.ref.expiry ?? null, side: o.side,
     order_type: o.type, qty: o.qty, price: o.price, status: o.status, reject_reason: o.reason ?? null,
     filled_at: o.status === "filled" ? new Date(ctx.now).toISOString() : null,
+    stop_loss: o.stopLoss ?? null, risk_inr: o.risk ?? null,
   }).select("id").single(), "insert order");
   return row.id as string;
 }
 
 /** Apply one fill: order row, trade, position (net/average/flip) and account balance. */
 async function recordFill(ctx: Ctx, f: {
-  ref: InstrumentRef; side: Side; qty: number; price: number; type: OrderType; orderId?: string;
+  ref: InstrumentRef; side: Side; qty: number; price: number; type: OrderType; orderId?: string; stopLoss?: number | null; risk?: number | null;
 }): Promise<string> {
   const key = instrumentKey(f.ref);
   const existing = ctx.positions.find((p) => p.instrument === key);
@@ -116,7 +125,7 @@ async function recordFill(ctx: Ctx, f: {
   if (orderId) {
     must(await ctx.sb.from("orders").update({ status: "filled", filled_at: new Date(ctx.now).toISOString() }).eq("id", orderId), "fill order");
   } else {
-    orderId = await insertOrder(ctx, { ref: f.ref, side: f.side, type: f.type, qty: f.qty, price: f.price, status: "filled" });
+    orderId = await insertOrder(ctx, { ref: f.ref, side: f.side, type: f.type, qty: f.qty, price: f.price, status: "filled", stopLoss: f.stopLoss, risk: f.risk });
   }
   must(await ctx.sb.from("trades").insert({
     user_id: ctx.acct.user_id, account_id: ctx.acct.id, order_id: orderId, instrument: key, side: f.side,
@@ -124,17 +133,18 @@ async function recordFill(ctx: Ctx, f: {
   }), "insert trade");
 
   if (existing && next) {
-    must(await ctx.sb.from("positions").update({ side: next.side, qty: next.qty, avg_price: next.avg }).eq("id", existing.id), "update position");
-    Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg });
+    const stop = f.stopLoss != null && next.side === f.side ? f.stopLoss : existing.stop_loss;
+    must(await ctx.sb.from("positions").update({ side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop }).eq("id", existing.id), "update position");
+    Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop });
   } else if (existing) {
     must(await ctx.sb.from("positions").delete().eq("id", existing.id), "delete position");
     ctx.positions = ctx.positions.filter((p) => p !== existing);
   } else if (next) {
     const row = must(await ctx.sb.from("positions").insert({
       user_id: ctx.acct.user_id, account_id: ctx.acct.id, instrument: key, segment: f.ref.segment,
-      side: next.side, qty: next.qty, avg_price: next.avg,
+      side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: f.stopLoss ?? null,
     }).select("id").single(), "insert position");
-    ctx.positions.push({ id: row.id as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg });
+    ctx.positions.push({ id: row.id as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: f.stopLoss ?? null, opened_at: new Date(ctx.now).toISOString() });
   }
 
   const today = istDate(ctx.now);
@@ -143,9 +153,11 @@ async function recordFill(ctx: Ctx, f: {
     balance: round2(ctx.acct.balance + realized),
     trading_days: ctx.acct.trading_days + (newDay ? 1 : 0),
     last_trading_date: today,
+    cycle_start_date: ctx.acct.cycle_start_date ?? today,
   };
   must(await ctx.sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "update account");
   Object.assign(ctx.acct, patch);
+  if (realized !== 0) await addDayResult(ctx, today, realized);
   return orderId;
 }
 
@@ -157,30 +169,44 @@ async function snapshot(ctx: Ctx, force: boolean) {
   must(await ctx.sb.from("equity_snapshots").insert({ user_id: ctx.acct.user_id, account_id: ctx.acct.id, equity }), "equity snapshot");
 }
 
+async function addDayResult(ctx: Ctx, day: string, pnl: number) {
+  const cur = must(await ctx.sb.from("day_results").select("pnl").eq("account_id", ctx.acct.id).eq("cycle_no", ctx.acct.cycle_no).eq("day", day).maybeSingle(), "load day result");
+  if (cur) must(await ctx.sb.from("day_results").update({ pnl: round2(num(cur.pnl) + pnl) }).eq("account_id", ctx.acct.id).eq("cycle_no", ctx.acct.cycle_no).eq("day", day), "update day result");
+  else must(await ctx.sb.from("day_results").insert({ account_id: ctx.acct.id, cycle_no: ctx.acct.cycle_no, day, pnl: round2(pnl) }), "insert day result");
+}
+
+async function dayPnls(ctx: Ctx): Promise<number[]> {
+  const rows = must(await ctx.sb.from("day_results").select("pnl").eq("account_id", ctx.acct.id).eq("cycle_no", ctx.acct.cycle_no), "load day results") ?? [];
+  return rows.map((r: { pnl: unknown }) => num(r.pnl));
+}
+
 async function rollDay(ctx: Ctx) {
   const today = istDate(ctx.now);
   if (ctx.acct.day_start_date === today) return;
   const { equity } = book(ctx);
-  const patch = { day_start_equity: equity, day_start_date: today };
+  // The trailing floor follows the highest closed balance at the end of a day.
+  const patch = { day_start_equity: equity, day_start_date: today, peak_eod_balance: Math.max(ctx.acct.peak_eod_balance, ctx.acct.balance) };
   must(await ctx.sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "roll day");
   Object.assign(ctx.acct, patch);
 }
 
-const BREACH_TEXT: Record<Breach, string> = {
-  overall_loss_limit: "Overall loss limit reached",
-  daily_loss_limit: "Daily loss limit reached",
-};
+const breachText = (b: Breach, ctx: Ctx): string =>
+  b === "overall_loss_limit" ? "Maximum drawdown reached"
+    : b === "daily_loss_limit" ? "Daily loss limit reached"
+    : `More than ${ctx.acct.rules.maxOpenPositions} open positions`;
 
 async function squareOff(ctx: Ctx, breach: Breach) {
-  must(await ctx.sb.from("orders").update({ status: "cancelled", reject_reason: BREACH_TEXT[breach] })
+  must(await ctx.sb.from("orders").update({ status: "cancelled", reject_reason: breachText(breach, ctx) })
     .eq("account_id", ctx.acct.id).eq("status", "pending"), "cancel pending");
   for (const p of [...ctx.positions]) {
     const ref = parseInstrumentKey(p.instrument);
     const px = priceInstrument(ref, spotFor(ref), ctx.now);
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
   }
-  const patch = { status: "breached", breach_reason: BREACH_TEXT[breach] };
+  const patch = { status: "breached", breach_reason: breachText(breach, ctx) };
   must(await ctx.sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "breach account");
+  // A breach cancels any payout that was not paid yet.
+  must(await ctx.sb.from("rewards").update({ status: "rejected" }).eq("account_id", ctx.acct.id).eq("status", "requested"), "cancel payout request");
   Object.assign(ctx.acct, patch);
   await snapshot(ctx, true);
 }
@@ -188,13 +214,42 @@ async function squareOff(ctx: Ctx, breach: Breach) {
 /** Check loss limits against the live book; square off and close the account on a breach. */
 async function enforceRisk(ctx: Ctx): Promise<boolean> {
   const { equity } = book(ctx);
+  const rl = ctx.acct.rules;
   const r = evaluateRisk({
     accountSize: ctx.acct.account_size, dayStartEquity: ctx.acct.day_start_equity, equity,
-    maxDailyPct: ctx.maxDailyPct, maxOverallPct: ctx.maxOverallPct,
+    dailyLossPct: rl.dailyLossPct, drawdownPct: rl.drawdownPct, drawdownType: rl.drawdownType, peakEod: ctx.acct.peak_eod_balance,
   });
   if (!r.breach) return false;
   await squareOff(ctx, r.breach);
   return true;
+}
+
+/** Move to the next phase when the closed-profit target and the profitable-day count are both met while flat. */
+async function maybePromote(ctx: Ctx): Promise<void> {
+  const a = ctx.acct;
+  if (a.status !== "active" || a.phase === "funded" || ctx.positions.length > 0) return;
+  const idx = a.phase === "phase_1" ? 0 : 1;
+  const target = a.rules.targetsPct[idx];
+  if (target == null) return;
+  if (a.balance - a.account_size < (a.account_size * target) / 100 - 1e-6) return;
+  const days = profitableDays(await dayPnls(ctx), a.account_size, a.rules.evalProfitableDay.pct);
+  if (days < a.rules.evalProfitableDay.days) return;
+  const next = a.phase === "phase_1" && a.rules.targetsPct.length > 1 ? "phase_2" : "funded";
+  const today = istDate(ctx.now);
+  const patch = {
+    phase: next, balance: a.account_size, day_start_equity: a.account_size, day_start_date: today,
+    peak_eod_balance: a.account_size, cycle_no: a.cycle_no + 1, cycle_start_date: today,
+  };
+  must(await ctx.sb.from("trading_accounts").update(patch).eq("id", a.id), "promote account");
+  Object.assign(a, patch);
+}
+
+/** After any change to the book: enforce limits, otherwise check for promotion and record equity. Returns true if breached. */
+async function afterChange(ctx: Ctx): Promise<boolean> {
+  if (await enforceRisk(ctx)) return true;
+  await maybePromote(ctx);
+  await snapshot(ctx, true);
+  return false;
 }
 
 /* ---------- public operations ---------- */
@@ -205,6 +260,65 @@ function refOf(req: { underlying: string; segment: InstrumentRef["segment"]; str
 
 function requireActive(ctx: Ctx) {
   if (ctx.acct.status !== "active") throw new HttpError(403, ctx.acct.breach_reason ? `This account is closed: ${ctx.acct.breach_reason}.` : `This account is ${ctx.acct.status}.`);
+}
+
+async function underReview(ctx: Ctx): Promise<boolean> {
+  const { count } = await ctx.sb.from("rewards").select("id", { count: "exact", head: true }).eq("account_id", ctx.acct.id).eq("status", "requested");
+  return (count ?? 0) > 0;
+}
+
+/** Rules that apply when an order adds exposure. Returns the order's risk in rupees; throws a plain message when blocked. */
+async function checkOpeningRules(ctx: Ctx, o: {
+  ref: InstrumentRef; side: Side; qty: number; entry: number; stop: number | null | undefined; existing: PosRow | undefined;
+}): Promise<number> {
+  const r = ctx.acct.rules;
+  if (pastEntryCutoff(ctx.now, r.entryCutoffIST)) throw new HttpError(422, `No new positions after ${r.entryCutoffIST.replace(/^(\d+):(\d+)$/, (_m, h, m) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "PM" : "AM"}`)}. You can still close positions.`);
+  if (o.stop == null) throw new HttpError(422, "Add a stop loss. Every trade needs one.");
+  if (!stopOnCorrectSide(o.side, o.stop, o.entry)) {
+    throw new HttpError(422, o.side === "Buy" ? "The stop loss must be below your buy price." : "The stop loss must be above your sell price.");
+  }
+  const ex = o.existing;
+  const qtyAfter = (ex ? ex.qty : 0) + o.qty;
+  const avgAfter = ex ? (ex.avg_price * ex.qty + o.entry * o.qty) / qtyAfter : o.entry;
+  const risk = riskAmount(avgAfter, o.stop, qtyAfter);
+  const maxRisk = round2((ctx.acct.balance * r.riskPerTradePct) / 100);
+  if (risk > maxRisk) {
+    throw new HttpError(422, `Risk is too high: ₹${Math.ceil(risk).toLocaleString("en-IN")} at your stop, the limit is ₹${Math.floor(maxRisk).toLocaleString("en-IN")} (${r.riskPerTradePct}% of balance). Reduce the quantity or move the stop closer.`);
+  }
+  const newRisk = round2(riskAmount(o.entry, o.stop, o.qty));
+
+  // one idea (same underlying and direction, same day) cannot carry more than a share of the daily limit
+  const dayStart = new Date(Date.parse(istDate(ctx.now) + "T00:00:00+05:30")).toISOString();
+  const today = must(await ctx.sb.from("orders").select("underlying,segment,side,risk_inr").eq("account_id", ctx.acct.id)
+    .eq("status", "filled").not("risk_inr", "is", null).gte("filled_at", dayStart), "load today's orders") ?? [];
+  const dirNow = directionOf(o.ref.segment, o.side);
+  const used = today
+    .filter((t: Record<string, unknown>) => t.underlying === o.ref.underlying && directionOf(String(t.segment), t.side as Side) === dirNow)
+    .reduce((sum: number, t: Record<string, unknown>) => sum + num(t.risk_inr), 0);
+  const cap = round2(((ctx.acct.account_size * r.dailyLossPct) / 100) * (r.ideaCapPctOfDaily / 100));
+  if (used + newRisk > cap) {
+    throw new HttpError(422, `Too much risk on one idea today: ₹${Math.ceil(used + newRisk).toLocaleString("en-IN")} on ${o.ref.underlying} ${dirNow}, the limit is ₹${Math.floor(cap).toLocaleString("en-IN")}.`);
+  }
+
+  if (r.largestTradeMultiple != null) {
+    const since = ctx.acct.cycle_start_date ? new Date(Date.parse(ctx.acct.cycle_start_date + "T00:00:00+05:30")).toISOString() : "1970-01-01";
+    const past = must(await ctx.sb.from("orders").select("risk_inr").eq("account_id", ctx.acct.id).eq("status", "filled")
+      .not("risk_inr", "is", null).gte("filled_at", since).limit(300), "load past risk") ?? [];
+    if (past.length >= 5) {
+      const avg = past.reduce((a: number, t: { risk_inr: unknown }) => a + num(t.risk_inr), 0) / past.length;
+      if (newRisk > avg * r.largestTradeMultiple) {
+        throw new HttpError(422, `This trade risks ₹${Math.ceil(newRisk).toLocaleString("en-IN")}, more than ${r.largestTradeMultiple}× your average trade (₹${Math.ceil(avg).toLocaleString("en-IN")}).`);
+      }
+    }
+  }
+  return newRisk;
+}
+
+/** Opening one position too many ends the account. */
+async function breachIfTooManyPositions(ctx: Ctx, existing: PosRow | undefined) {
+  if (existing || ctx.positions.length < ctx.acct.rules.maxOpenPositions) return;
+  await squareOff(ctx, "max_positions");
+  throw new HttpError(403, `Account closed: ${breachText("max_positions", ctx)}. All positions were closed.`);
 }
 
 export async function placeOrder(userId: string, req: PlaceOrderRequest) {
@@ -227,8 +341,22 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
 
     const key = instrumentKey(ref);
     const ex = ctx.positions.find((p) => p.instrument === key);
+    if (await underReview(ctx)) throw new HttpError(403, "Your payout request is under review. Trading is paused until it is decided.");
     const inc = increasingQty(ex ? { side: ex.side, qty: ex.qty, avg: ex.avg_price } : null, req.side, req.qty);
     const estPx = action === "fill" ? ltp : (limit as number);
+    let risk: number | null = null;
+    let stop: number | null = null;
+    if (ex && ex.side !== req.side) {
+      if (req.qty > ex.qty) throw new HttpError(422, "Close the position first, then open the opposite one.");
+      const heldFor = ctx.now - Date.parse(ex.opened_at);
+      if (heldFor < ctx.acct.rules.minHoldSeconds * 1000) {
+        throw new HttpError(422, `A position must stay open for ${ctx.acct.rules.minHoldSeconds} seconds. Try again in ${Math.ceil((ctx.acct.rules.minHoldSeconds * 1000 - heldFor) / 1000)}s.`);
+      }
+    } else {
+      await breachIfTooManyPositions(ctx, ex);
+      stop = req.stopLoss ?? null;
+      risk = await checkOpeningRules(ctx, { ref, side: req.side, qty: req.qty, entry: estPx, stop, existing: ex });
+    }
     const need = inc > 0 ? marginRequired(ref, req.side, inc, estPx, spot) : 0;
     const b = book(ctx);
     if (!hasMargin(need, b.equity, b.used)) {
@@ -240,12 +368,12 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
     if (action === "pending") {
       const { count } = await ctx.sb.from("orders").select("id", { count: "exact", head: true }).eq("account_id", ctx.acct.id).eq("status", "pending");
       if ((count ?? 0) >= MAX_PENDING_ORDERS) throw new HttpError(429, `You can have at most ${MAX_PENDING_ORDERS} pending orders.`);
-      const orderId = await insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending" });
+      const orderId = await insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending", stopLoss: stop, risk });
       return { orderId, status: "pending" as const };
     }
 
-    const orderId = await recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType });
-    if (!(await enforceRisk(ctx))) await snapshot(ctx, true);
+    const orderId = await recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType, stopLoss: stop, risk });
+    await afterChange(ctx);
     return { orderId, status: "filled" as const, fillPrice: ltp };
   });
 }
@@ -266,10 +394,14 @@ export async function closePosition(userId: string, req: { accountId: string; in
     requireActive(ctx);
     const p = ctx.positions.find((x) => x.instrument === req.instrument);
     if (!p) throw new HttpError(404, "You have no open position in that instrument.");
+    const held = ctx.now - Date.parse(p.opened_at);
+    if (held < ctx.acct.rules.minHoldSeconds * 1000) {
+      throw new HttpError(422, `A position must stay open for ${ctx.acct.rules.minHoldSeconds} seconds. Try again in ${Math.ceil((ctx.acct.rules.minHoldSeconds * 1000 - held) / 1000)}s. Your stop loss still works.`);
+    }
     const ref = parseInstrumentKey(p.instrument);
     const px = priceInstrument(ref, spotFor(ref), ctx.now);
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
-    if (!(await enforceRisk(ctx))) await snapshot(ctx, true);
+    await afterChange(ctx);
     return { fillPrice: px };
   });
 }
@@ -278,6 +410,8 @@ export async function closeAll(userId: string, req: { accountId: string }) {
   return withLock(req.accountId, async () => {
     const ctx = await loadCtx(admin(), req.accountId, userId);
     requireActive(ctx);
+    const young = ctx.positions.find((p) => ctx.now - Date.parse(p.opened_at) < ctx.acct.rules.minHoldSeconds * 1000);
+    if (young) throw new HttpError(422, `Positions must stay open for ${ctx.acct.rules.minHoldSeconds} seconds before they can be closed. Your stop losses still work.`);
     let closed = 0;
     for (const p of [...ctx.positions]) {
       const ref = parseInstrumentKey(p.instrument);
@@ -287,7 +421,7 @@ export async function closeAll(userId: string, req: { accountId: string }) {
     }
     must(await ctx.sb.from("orders").update({ status: "cancelled", reject_reason: "Cancelled by square off" })
       .eq("account_id", ctx.acct.id).eq("status", "pending"), "cancel pending");
-    if (!(await enforceRisk(ctx))) await snapshot(ctx, true);
+    await afterChange(ctx);
     return { closed };
   });
 }
@@ -299,7 +433,7 @@ export async function createCheckout(userId: string, req: CheckoutRequest) {
   if (!devOk) throw new HttpError(501, "Payments are not enabled yet.");
   const sb = admin();
 
-  const plan = must(await sb.from("plans").select("key,evaluation_phases,active").eq("key", req.planKey).maybeSingle(), "load plan");
+  const plan = must(await sb.from("plans").select("key,evaluation_phases,active,rules").eq("key", req.planKey).maybeSingle(), "load plan");
   if (!plan || !plan.active) throw new HttpError(404, "That plan is not available.");
   const price = must(await sb.from("plan_prices").select("price_inr").eq("plan_key", req.planKey).eq("account_size", req.accountSize).maybeSingle(), "load price");
   if (!price) throw new HttpError(404, "That account size is not available for this plan.");
@@ -318,6 +452,7 @@ export async function createCheckout(userId: string, req: CheckoutRequest) {
     user_id: userId, purchase_id: purchase.id, plan_key: req.planKey, account_size: req.accountSize,
     phase: plan.evaluation_phases === 0 ? "funded" : "phase_1", status: "active",
     balance: req.accountSize, day_start_equity: req.accountSize, day_start_date: istDate(Date.now()),
+    rules: plan.rules ?? PLAN_RULES[req.planKey] ?? null, peak_eod_balance: req.accountSize,
   }).select("id").single();
   if (acct.error || !acct.data) {
     await sb.from("purchases").update({ status: "failed" }).eq("id", purchase.id);
@@ -336,6 +471,19 @@ async function processAccount(sb: Sb, accountId: string) {
   }
   await rollDay(ctx);
 
+  // Stop losses close the position on the live price, with no waiting period.
+  for (const p of [...ctx.positions]) {
+    if (p.stop_loss == null) continue;
+    const ref = parseInstrumentKey(p.instrument);
+    const spot = getSpot(ref.underlying);
+    if (spot == null) continue;
+    const ltp = priceInstrument(ref, spot, ctx.now);
+    const hit = p.side === "Buy" ? ltp <= p.stop_loss : ltp >= p.stop_loss;
+    if (!hit) continue;
+    await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: ltp, type: "Stop" });
+    if (await enforceRisk(ctx)) return;
+  }
+
   const pending = must(await sb.from("orders").select("*").eq("account_id", accountId).eq("status", "pending").order("created_at"), "load pending") ?? [];
   for (const o of pending) {
     const ref: InstrumentRef = {
@@ -349,16 +497,35 @@ async function processAccount(sb: Sb, accountId: string) {
     const key = instrumentKey(ref);
     const ex = ctx.positions.find((p) => p.instrument === key);
     const inc = increasingQty(ex ? { side: ex.side, qty: ex.qty, avg: ex.avg_price } : null, o.side, num(o.qty));
+    const opening = !ex || ex.side === o.side;
+    if (opening) {
+      if (pastEntryCutoff(ctx.now, ctx.acct.rules.entryCutoffIST)) {
+        must(await sb.from("orders").update({ status: "rejected", reject_reason: "Past the entry cutoff time" }).eq("id", o.id), "reject order");
+        continue;
+      }
+      try {
+        await breachIfTooManyPositions(ctx, ex);
+      } catch {
+        return; // account was closed by the position limit
+      }
+    } else if (num(o.qty) > ex.qty) {
+      must(await sb.from("orders").update({ status: "rejected", reject_reason: "Quantity is more than the open position" }).eq("id", o.id), "reject order");
+      continue;
+    }
     const need = inc > 0 ? marginRequired(ref, o.side, inc, ltp, spot) : 0;
     const b = book(ctx);
     if (!hasMargin(need, b.equity, b.used)) {
       must(await sb.from("orders").update({ status: "rejected", reject_reason: "Not enough margin when the price was reached" }).eq("id", o.id), "reject order");
       continue;
     }
-    await recordFill(ctx, { ref, side: o.side, qty: num(o.qty), price: ltp, type: o.order_type, orderId: o.id });
+    await recordFill(ctx, {
+      ref, side: o.side, qty: num(o.qty), price: ltp, type: o.order_type, orderId: o.id,
+      stopLoss: o.stop_loss == null ? null : num(o.stop_loss), risk: o.risk_inr == null ? null : num(o.risk_inr),
+    });
     if (await enforceRisk(ctx)) return;
   }
   if (await enforceRisk(ctx)) return;
+  await maybePromote(ctx);
   if (ctx.positions.length > 0) await snapshot(ctx, false);
 }
 
@@ -381,4 +548,68 @@ export async function runTick() {
     }
   }
   return { accounts: done };
+}
+
+
+/* ---------- rewards (payouts) ---------- */
+
+export async function requestPayout(userId: string, accountId: string) {
+  return withLock(accountId, async () => {
+    const ctx = await loadCtx(admin(), accountId, userId);
+    const a = ctx.acct;
+    if (a.status !== "active") throw new HttpError(403, "This account is not active.");
+    if (a.phase !== "funded") throw new HttpError(422, "Rewards open once the account is funded.");
+    const kyc = must(await ctx.sb.from("kyc_status").select("verified").eq("user_id", userId).maybeSingle(), "load kyc");
+    const need = a.rules.fundedProfitableDay;
+    const days = profitableDays(await dayPnls(ctx), a.account_size, need.pct);
+    const check = payoutCheck({
+      accountSize: a.account_size, balance: a.balance, flat: ctx.positions.length === 0, kycVerified: !!kyc?.verified,
+      daysSinceCycleStart: a.cycle_start_date ? daysBetween(a.cycle_start_date, istDate(ctx.now)) : null,
+      profitableDays: days, needDays: need.days, cycleDays: a.rules.payout.cycleDays, minProfitPct: a.rules.payout.minProfitPct,
+      minPayoutInr: a.rules.payout.minPayoutInr, splitPct: a.rules.payout.splitPct, underReview: await underReview(ctx),
+    });
+    if (!check.ok) throw new HttpError(422, check.reasons.join(" "));
+    let refund = 0;
+    if (a.rules.payout.feeRefundAtPayout === a.payouts_count + 1 && a.purchase_id) {
+      const pu = must(await ctx.sb.from("purchases").select("amount_inr").eq("id", a.purchase_id).maybeSingle(), "load purchase");
+      refund = pu ? num(pu.amount_inr) : 0;
+    }
+    const row = must(await ctx.sb.from("rewards").insert({
+      user_id: userId, account_id: accountId, amount_inr: round2(check.payable + refund), split_pct: a.rules.payout.splitPct,
+      fee_refund_inr: refund, cycle_no: a.cycle_no, gross_profit_inr: check.profit,
+    }).select("id").single(), "create reward request");
+    return { rewardId: row.id as string, payable: check.payable, feeRefund: refund };
+  });
+}
+
+/** Admin decision on a payout request. Approval starts the next cycle: balance back to the start, drawdown room restored. */
+export async function decideReward(rewardId: string, action: "approve" | "reject" | "paid", payoutRef?: string) {
+  const sb = admin();
+  const rw = must(await sb.from("rewards").select("*").eq("id", rewardId).maybeSingle(), "load reward");
+  if (!rw) throw new HttpError(404, "Reward not found.");
+  return withLock(String(rw.account_id), async () => {
+    if (action === "reject") {
+      if (rw.status !== "requested") throw new HttpError(409, "Only requested payouts can be rejected.");
+      must(await sb.from("rewards").update({ status: "rejected" }).eq("id", rewardId), "reject reward");
+      return {};
+    }
+    if (action === "paid") {
+      if (rw.status !== "approved") throw new HttpError(409, "Approve the payout first.");
+      must(await sb.from("rewards").update({ status: "paid", paid_at: new Date().toISOString(), payout_ref: payoutRef ?? null }).eq("id", rewardId), "mark paid");
+      return {};
+    }
+    if (rw.status !== "requested") throw new HttpError(409, "Only requested payouts can be approved.");
+    const ctx = await loadCtx(sb, String(rw.account_id));
+    if (ctx.acct.status !== "active") throw new HttpError(409, "The account is no longer active.");
+    if (ctx.positions.length > 0) throw new HttpError(409, "The account has open positions.");
+    const today = istDate(Date.now());
+    const patch = {
+      balance: ctx.acct.account_size, day_start_equity: ctx.acct.account_size, day_start_date: today,
+      peak_eod_balance: ctx.acct.account_size, cycle_no: ctx.acct.cycle_no + 1, cycle_start_date: today,
+      payouts_count: ctx.acct.payouts_count + 1,
+    };
+    must(await sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "reset account");
+    must(await sb.from("rewards").update({ status: "approved" }).eq("id", rewardId), "approve reward");
+    return {};
+  });
 }
