@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/dashboard", "/terminal", "/checkout"];
+const PROTECTED = ["/dashboard", "/terminal", "/checkout", "/admin"];
 
 /** Refreshes the Supabase session cookie on every request and gates the trader-only pages. */
 export async function proxy(request: NextRequest) {

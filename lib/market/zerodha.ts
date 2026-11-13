@@ -1,26 +1,42 @@
+import "server-only";
 import type { PriceSource, Tick } from "./source";
+import { fetchLtp, kiteSession, noteError, noteOk } from "./kite";
 
 /**
- * Zerodha Kite Connect adapter (not wired yet).
+ * Zerodha Kite Connect price source. Polls the LTP endpoint about once a second for all symbols in one call,
+ * which fits the Connect plan and Kite's rate limit. Does nothing until the admin has connected today.
  *
- * Constraints from Kite Connect's terms and WebSocket docs:
- *  - max 3 WebSocket connections per API key, 3000 instruments per connection
- *  - live data must not be displayed to the public, cached for redistribution or sublicensed
- *  - virtual / mock trading apps are listed as a prohibited use
- * Zerodha may revoke access. Keep everything behind PriceSource so the vendor can change.
- *
- * Plan: one server-side connection fans ticks out to our own engine; browsers never hold the API key.
- * Needs KITE_API_KEY, KITE_API_SECRET and a daily access token from the Kite login flow.
+ * Kite's terms restrict redistribution and public display of live data and list mock-trading apps as a
+ * prohibited use. Zerodha can revoke access. Everything depends only on the PriceSource interface.
  */
+const POLL_MS = 1200;
+
 export class ZerodhaSource implements PriceSource {
   readonly name = "zerodha";
+  private timer?: ReturnType<typeof setInterval>;
+  private busy = false;
 
-  subscribe(_symbols: string[], _onTick: (t: Tick) => void): void {
-    if (!process.env.KITE_API_KEY || !process.env.KITE_API_SECRET) {
-      throw new Error("KITE_API_KEY and KITE_API_SECRET are required for PRICE_SOURCE=zerodha");
-    }
-    throw new Error("Zerodha ticker is not implemented yet");
+  subscribe(symbols: string[], onTick: (t: Tick) => void): void {
+    const poll = async () => {
+      if (this.busy || !kiteSession()) return;
+      this.busy = true;
+      try {
+        const prices = await fetchLtp(symbols);
+        const ts = Date.now();
+        for (const [symbol, ltp] of Object.entries(prices)) onTick({ symbol, ltp, ts });
+        noteOk();
+      } catch (e) {
+        noteError(e instanceof Error ? e.message : String(e));
+      } finally {
+        this.busy = false;
+      }
+    };
+    this.timer = setInterval(() => void poll(), POLL_MS);
+    this.timer.unref?.();
+    void poll();
   }
 
-  close(): void {}
+  close(): void {
+    if (this.timer) clearInterval(this.timer);
+  }
 }
