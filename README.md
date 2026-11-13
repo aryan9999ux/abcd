@@ -38,4 +38,6 @@ npm run dev
 - Confirm lot sizes and expiry rules in `lib/market/fno.ts` against NSE/BSE circulars.
 - Kite Connect terms prohibit mock-trading apps and public display of live data. Confirm in writing with Zerodha, or move to a licensed data vendor.
 - Get a securities lawyer's opinion on the simulated-account and rewards model (SEBI advisory of 4 Nov 2024 on virtual trading platforms).
+- Auth redirect URLs: Supabase (Authentication, URL Configuration) and the Kite developer console only accept listed redirect URLs. Today these are `http://localhost:3000/auth/callback` style localhost entries. When the Railway URL or a real domain exists, add `<site>/auth/callback` in Supabase and the Kite callback URL in the Kite console, and set Supabase's Site URL.
+- Rotate the Supabase service-role key and the Kite API secret before launch (both were shared in chat).
 - Never commit `SUPABASE_SERVICE_ROLE_KEY`, `KITE_API_SECRET` or any `.env*.local` file.
