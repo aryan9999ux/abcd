@@ -25,6 +25,14 @@ npm run dev
 | `lib/market/` | Price-source interface, demo source, Zerodha adapter stub, F&O contract config. |
 | `supabase/` | Migrations and seed data. Traders can read only their own rows and cannot write trading tables. |
 
+## Trading engine
+
+- Orders, fills, margin, loss-limit breaches and checkout run on the server under `app/api/` and `lib/engine/`, using the service-role key. Traders cannot write trading tables.
+- Pure rules (netting, triggers, loss limits) are in `lib/engine/pure.ts`. Test them with `npx tsx lib/engine/selftest.ts`.
+- The tick job (pending orders, loss limits) starts on the first request. It needs one long-running server (`next start`); on serverless hosting, call `/api/engine/tick` on a schedule with the `ENGINE_SECRET` header.
+- Writes are serialised per account inside one process. Running several engine instances needs the fill moved into a Postgres function.
+- Not built yet: phase promotion on hitting the profit target, reward requests, a payment gateway, holiday handling for expiries.
+
 ## Before launch
 
 - Confirm lot sizes and expiry rules in `lib/market/fno.ts` against NSE/BSE circulars.
