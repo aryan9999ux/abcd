@@ -2,6 +2,7 @@
 import "./trading.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 
@@ -15,10 +16,18 @@ interface Props {
 /** Frame for the signed-in workspace: glass top bar, navigation, theme toggle, sign out. */
 export default function Shell({ active, accountId, slot, children }: Props) {
   const router = useRouter();
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem("theme");
+      if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
 
   function toggleTheme() {
     const r = document.documentElement;
-    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    const cur = r.dataset.theme || "dark";
     const next = cur === "dark" ? "light" : "dark";
     r.dataset.theme = next;
     try {
@@ -36,11 +45,7 @@ export default function Shell({ active, accountId, slot, children }: Props) {
 
   return (
     <div className="tr">
-      <div className="tr-orbs" aria-hidden="true">
-        <div className="tr-orb a" />
-        <div className="tr-orb b" />
-      </div>
-      <div style={{ paddingInline: "max(16px, env(safe-area-inset-left, 0px))" }}>
+      <div style={{ paddingInline: "max(20px, env(safe-area-inset-left, 0px))" }}>
         <header className="tr-head">
           <div className="tr-main" style={{ paddingBlock: 0 }}>
             <div className="tr-top tr-glass">
@@ -49,12 +54,12 @@ export default function Shell({ active, accountId, slot, children }: Props) {
                   <path d="M16 2 28 9v14L16 30 4 23V9z" fill="none" stroke="var(--accent)" strokeWidth="2" />
                   <path d="M9 20 14 13l4 4 5-8" fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Apex Capital Funded
+                <span>Apex Capital Funded</span>
               </Link>
               <nav className="tr-nav" aria-label="Workspace">
                 <Link href="/dashboard" aria-current={active === "dashboard" ? "page" : undefined}>Dashboard</Link>
                 <Link href={accountId ? `/terminal?account=${accountId}` : "/terminal"} aria-current={active === "terminal" ? "page" : undefined}>Terminal</Link>
-                <Link href="/checkout">Buy new account</Link>
+                <Link href="/checkout">New account</Link>
               </nav>
               {slot}
               <span className="tr-sp" />

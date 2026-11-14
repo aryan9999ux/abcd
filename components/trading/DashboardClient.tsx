@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { SYMBOLS } from "./constants";
 import EquityChart from "./EquityChart";
 import { dateTime, inr, nameOfKey, num, pct, phaseLabel, statusLabel } from "./format";
-import { Meter } from "./Meter";
 import { accountMetrics } from "./metrics";
 import NoAccounts from "./NoAccounts";
 import RewardCard from "./RewardCard";
@@ -62,7 +61,7 @@ export default function DashboardClient({ initialAccounts, plans, initialAccount
     <Shell active="dashboard" accountId={account.id} slot={slot}>
       <div className="tr-dhead">
         <div>
-          <span className="tr-eyebrow">Dashboard</span>
+          <span className="tr-eyebrow">Account overview</span>
           <h1>{plan?.name ?? "Account"} · {inr(account.account_size)}</h1>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -78,38 +77,29 @@ export default function DashboardClient({ initialAccounts, plans, initialAccount
       {(quoteError || data.error) && <div className="tr-banner" role="status">{quoteError ?? data.error}</div>}
       {!m.pricesReady && openCount > 0 && <div className="tr-banner" role="status">Waiting for prices. Open P&amp;L shows as soon as they arrive.</div>}
 
-      <div className="tr-dstats">
-        <div className="tr-glass tr-tile"><small>Equity</small><div className="v">{m.pricesReady || openCount === 0 ? inr(m.equity) : inr(account.balance)}</div><div className="s">Balance {inr(account.balance)}</div></div>
-        <div className="tr-glass tr-tile">
-          <small>Profit / loss</small>
-          <div className={"v " + (m.pl >= 0 ? "tr-up" : "tr-down")}>{inr(m.pl)} <span style={{ fontSize: ".8rem" }}>{pct(m.plPct)}</span></div>
-          <div className="s">Open P&amp;L {inr(m.unrealized)}</div>
+      <div className="tr-hero">
+        <div className="tr-glass tr-equity">
+          <small>Equity</small>
+          <div className="n">{m.pricesReady || openCount === 0 ? inr(m.equity) : inr(account.balance)}</div>
+          <div className="row">
+            <span>Profit / loss <b className={m.pl >= 0 ? "tr-up" : "tr-down"}>{inr(m.pl)} {pct(m.plPct)}</b></span>
+            <span>Open P&amp;L <b>{inr(m.unrealized)}</b></span>
+            <span>Balance <b>{inr(account.balance)}</b></span>
+          </div>
+          <EquityChart points={curve} base={account.account_size} emptyText={data.loading ? "Loading your equity history…" : "Your equity curve appears after your first trades."} />
+          <div className="row" style={{ marginTop: 6 }}>
+            <span className="tr-pill gold">{phaseLabel(account.phase)}</span>
+            <span className={"tr-pill " + (account.status === "active" ? "up" : "down")}>{statusLabel(account.status)}</span>
+            {account.phase === "funded" && <span>Reward at {split}% <b className="tr-up">{inr(m.rewardEstimate)}</b></span>}
+          </div>
         </div>
-        <div className="tr-glass tr-tile">
-          <small>Phase</small>
-          <div className="v" style={{ fontFamily: "var(--f-display)" }}>{phaseLabel(account.phase)}</div>
-          <div className="s">{statusLabel(account.status)}</div>
-        </div>
-        <div className="tr-glass tr-tile">
-          <small>Reward at {split}%</small>
-          <div className="v tr-up">{inr(m.rewardEstimate)}</div>
-          <div className="s">{account.phase === "funded" ? "Estimate on current profit" : "Starts once the account is funded"}</div>
-        </div>
+        {account.status === "active" ? <RulesPanel account={account} m={m} openCount={openCount} /> : <div className="tr-glass tr-card"><h3>Rules</h3><p className="tr-muted">This account is not active.</p></div>}
       </div>
 
-      {account.status === "active" && <RulesPanel account={account} m={m} openCount={openCount} />}
       {account.phase === "funded" && account.status === "active" && <RewardCard accountId={account.id} onDone={data.refetch} />}
 
       <div className="tr-dcols">
         <div className="tr-stack">
-          <div className="tr-glass tr-eqc">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <h3 style={{ font: "600 1.1rem var(--f-display)" }}>Equity curve</h3>
-              <span className="tr-muted" style={{ fontSize: ".82rem" }}>{data.loading ? "Loading…" : `Starting balance ${inr(account.account_size)}`}</span>
-            </div>
-            <EquityChart points={curve} base={account.account_size} emptyText={data.loading ? "Loading your equity history…" : "Your equity curve appears after your first trades."} />
-          </div>
-
           <div className="tr-glass tr-card">
             <h3>Recent trades</h3>
             <div className="tr-scroll">
@@ -148,13 +138,7 @@ export default function DashboardClient({ initialAccounts, plans, initialAccount
                   </div>
                   <button className="tr-btn sm" onClick={() => setAccountId(a.id)} disabled={current}>{current ? "Selected" : "Select"}</button>
                 </div>
-                <div className="tr-muted" style={{ fontSize: ".85rem" }}>{inr(a.account_size)} simulated · opened {dateTime(a.created_at)}</div>
-                <div className="tr-meters">
-                  {am.targetPct != null && <Meter label="Profit target" used={Math.max(0, am.plPct)} limit={am.targetPct} text={`${pct(am.plPct)} of ${am.targetPct}%`} />}
-                  <Meter label="Daily loss used" used={am.dailyUsedPct} limit={am.dailyLimitPct} text={`${am.dailyUsedPct.toFixed(1)}% of ${am.dailyLimitPct}%`} risk />
-                  <Meter label="Overall loss used" used={am.overallUsedPct} limit={am.overallLimitPct} text={`${am.overallUsedPct.toFixed(1)}% of ${am.overallLimitPct}%`} risk />
-                  {ap && <Meter label="Trading days" used={a.trading_days} limit={ap.min_trading_days} text={`${a.trading_days} of ${ap.min_trading_days}`} />}
-                </div>
+                <div className="tr-muted" style={{ fontSize: ".78rem" }}>{inr(a.account_size)} · opened {dateTime(a.created_at)} · equity <span className="tr-mono">{inr(am.equity)}</span></div>
               </div>
             );
           })}

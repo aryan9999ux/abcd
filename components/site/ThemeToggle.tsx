@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 function current(): "dark" | "light" {
   const r = document.documentElement;
-  return (r.dataset.theme as "dark" | "light" | undefined) ?? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  return (r.dataset.theme as "dark" | "light" | undefined) ?? "dark";
 }
 
 export default function ThemeToggle() {

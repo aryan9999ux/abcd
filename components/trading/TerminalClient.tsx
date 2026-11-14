@@ -12,6 +12,7 @@ import { Meter } from "./Meter";
 import { accountMetrics, livePrice, positionPnl } from "./metrics";
 import NoAccounts from "./NoAccounts";
 import OptionChain from "./OptionChain";
+import StatusStrip from "./StatusStrip";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
 import type { AccountRow, Candle, PlanRow } from "./types";
@@ -171,34 +172,16 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     return <Shell active="terminal"><NoAccounts what="trading terminal" /></Shell>;
   }
 
-  const lossPct = m ? (m.overallUsedPct / m.overallLimitPct) * 100 : 0;
   const slot = (
-    <>
-      <label className="tr-f tr-acctsel">
-        Account
-        <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value)} aria-label="Trading account">
-          {data.accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)} · {phaseLabel(a.phase)}{a.status !== "active" ? ` · ${statusLabel(a.status)}` : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="tr-stat"><small>Equity</small><div className="tr-mono">{m ? inr(m.equity) : "—"}</div></div>
-      <div className="tr-stat">
-        <small>Day P&amp;L</small>
-        <div className={"tr-mono " + (m && m.equity - (account?.day_start_equity ?? 0) >= 0 ? "tr-up" : "tr-down")}>
-          {m && account ? inr(m.equity - account.day_start_equity) : "—"}
-        </div>
-      </div>
-      <div className="tr-stat"><small>Margin used</small><div className="tr-mono">{m ? inr(m.marginUsed) : "—"}</div></div>
-      <div className="tr-stat"><small>Available</small><div className="tr-mono">{m ? inr(m.available) : "—"}</div></div>
-      <div className="tr-lossm">
-        <small><span>Overall loss used</span><span className="tr-mono">{m ? `${m.overallUsedPct.toFixed(2)}% of ${m.overallLimitPct}%` : "—"}</span></small>
-        <div className="tr-track"><i className={lossPct > 80 ? "bad" : lossPct > 55 ? "risk" : ""} style={{ width: `${Math.min(100, lossPct)}%` }} /></div>
-      </div>
-      <span className="tr-pill gold">{source === "demo" ? "Demo prices" : "Simulated account"}</span>
-    </>
+    <label className="tr-f tr-acctsel">
+      <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value)} aria-label="Trading account">
+        {data.accounts.map((a) => (
+          <option key={a.id} value={a.id}>
+            {plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)} · {phaseLabel(a.phase)}{a.status !== "active" ? ` · ${statusLabel(a.status)}` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 
   const expiries = expiriesFor(sel.underlying);
@@ -218,6 +201,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         <div className="tr-banner ok"><b>Phase passed.</b> This account no longer accepts new orders.<Link className="tr-btn sm" href="/dashboard">Go to dashboard</Link></div>
       )}
       {(quoteError || data.error) && <div className="tr-banner" role="status">{quoteError ?? data.error}</div>}
+
+      {account && <StatusStrip account={account} m={m} openCount={accPositions.length} />}
 
       <div className="tr-grid">
         <div className="tr-col">

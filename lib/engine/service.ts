@@ -170,9 +170,19 @@ async function snapshot(ctx: Ctx, force: boolean) {
 }
 
 async function addDayResult(ctx: Ctx, day: string, pnl: number) {
-  const cur = must(await ctx.sb.from("day_results").select("pnl").eq("account_id", ctx.acct.id).eq("cycle_no", ctx.acct.cycle_no).eq("day", day).maybeSingle(), "load day result");
-  if (cur) must(await ctx.sb.from("day_results").update({ pnl: round2(num(cur.pnl) + pnl) }).eq("account_id", ctx.acct.id).eq("cycle_no", ctx.acct.cycle_no).eq("day", day), "update day result");
-  else must(await ctx.sb.from("day_results").insert({ account_id: ctx.acct.id, cycle_no: ctx.acct.cycle_no, day, pnl: round2(pnl) }), "insert day result");
+  const where = { account_id: ctx.acct.id, cycle_no: ctx.acct.cycle_no, day };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const cur = must(await ctx.sb.from("day_results").select("pnl").match(where).maybeSingle(), "load day result");
+    if (cur) {
+      must(await ctx.sb.from("day_results").update({ pnl: round2(num(cur.pnl) + pnl) }).match(where), "update day result");
+      return;
+    }
+    const { error } = await ctx.sb.from("day_results").insert({ ...where, pnl: round2(pnl) });
+    if (!error) return;
+    // Another worker created the row first: loop and add to it instead.
+    if (error.code !== "23505") throw new Error(`insert day result: ${error.message}`);
+  }
+  throw new Error("insert day result: too many conflicts");
 }
 
 async function dayPnls(ctx: Ctx): Promise<number[]> {
