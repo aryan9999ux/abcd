@@ -1,6 +1,6 @@
 import "server-only";
 import type { PriceSource, Tick } from "./source";
-import { fetchQuotes, kiteKey, kiteSession, noteError, noteOk, type KiteQuote } from "./kite";
+import { fetchQuotes, kiteKey, kiteSession, restoreSession, noteError, noteOk, type KiteQuote } from "./kite";
 import { ensureInstruments, quoteKeyOf } from "./instruments";
 import { parseInstrumentKey } from "../types";
 
@@ -30,9 +30,11 @@ export class ZerodhaSource implements PriceSource {
 
   subscribe(symbols: string[], onTick: (t: Tick) => void, extra?: () => string[]): void {
     const poll = async () => {
-      if (this.busy || !kiteSession()) return;
+      if (this.busy) return;
       this.busy = true;
       try {
+        if (!kiteSession()) await restoreSession();
+        if (!kiteSession()) return;
         await ensureInstruments();
         const map = new Map<string, string>(); // kite key -> our key
         for (const s of symbols) map.set(kiteKey(s), s);

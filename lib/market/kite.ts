@@ -1,5 +1,6 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { adminClient } from "../supabase/admin";
 
 /**
  * Zerodha Kite Connect helpers (server only).
@@ -85,7 +86,53 @@ export async function exchangeRequestToken(requestToken: string): Promise<KiteSe
   };
   state.session = session;
   state.lastError = undefined;
+  await persistSession(session);
   return session;
+}
+
+/* The token is kept (encrypted) in the database so a redeploy or restart does not drop live prices.
+   It is still only valid until about 06:00 IST, so the admin connects once each trading morning. */
+const encKey = () => createHash("sha256").update("kite-session|" + (process.env.KITE_API_SECRET ?? "")).digest();
+
+function seal(plain: string): string {
+  const iv = randomBytes(12);
+  const c = createCipheriv("aes-256-gcm", encKey(), iv);
+  const body = Buffer.concat([c.update(plain, "utf8"), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), body]).toString("base64");
+}
+function unseal(b64: string): string {
+  const raw = Buffer.from(b64, "base64");
+  const d = createDecipheriv("aes-256-gcm", encKey(), raw.subarray(0, 12));
+  d.setAuthTag(raw.subarray(12, 28));
+  return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString("utf8");
+}
+
+async function persistSession(s: KiteSession) {
+  try {
+    const { error } = await adminClient().from("kite_session").upsert({
+      id: 1, token_enc: seal(s.accessToken), user_id: s.userId, user_name: s.userName, connected_at: new Date(s.connectedAt).toISOString(),
+    });
+    if (error) console.error("[kite] could not save session:", error.message);
+  } catch (e) {
+    console.error("[kite] could not save session:", e instanceof Error ? e.message : e);
+  }
+}
+
+let lastRestore = 0;
+/** After a restart, pick the saved login back up if it is still valid. Cheap; retries at most every 20 seconds. */
+export async function restoreSession(): Promise<void> {
+  if (state.session || Date.now() - lastRestore < 20_000) return;
+  lastRestore = Date.now();
+  try {
+    const { data } = await adminClient().from("kite_session").select("token_enc,user_id,user_name,connected_at").eq("id", 1).maybeSingle();
+    if (!data) return;
+    const connectedAt = Date.parse(data.connected_at);
+    if (Date.now() >= sessionExpiry(connectedAt)) return;
+    state.session = { accessToken: unseal(data.token_enc), userId: data.user_id ?? "", userName: data.user_name ?? "Zerodha user", connectedAt };
+    state.lastError = undefined;
+  } catch (e) {
+    console.error("[kite] could not restore session:", e instanceof Error ? e.message : e);
+  }
 }
 
 /** Our symbol -> Kite "EXCHANGE:TRADINGSYMBOL" key used by the quote endpoints. */

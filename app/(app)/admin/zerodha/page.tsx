@@ -4,7 +4,7 @@ import { HttpError } from "@/lib/engine/http";
 import { ensureEngine } from "@/lib/engine/runtime";
 import { feedStats } from "@/lib/market/server-feed";
 import { contractsReady } from "@/lib/market/instruments";
-import { kiteStatus } from "@/lib/market/kite";
+import { kiteStatus, restoreSession } from "@/lib/market/kite";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Zerodha connection" };
@@ -29,6 +29,7 @@ export default async function ZerodhaAdmin({ searchParams }: { searchParams: Pro
 
   const sp = await searchParams;
   ensureEngine();
+  await restoreSession();
   const k = kiteStatus();
   const f = feedStats();
   const modeOk = f.source === "zerodha";
