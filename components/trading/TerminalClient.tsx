@@ -2,9 +2,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { instrumentKey, parseInstrumentKey, type InstrumentRef, type Side } from "@/lib/types";
-import { EXPIRIES, lotSize, priceInstrument } from "@/lib/market/pricing";
+import { priceOf } from "@/lib/market/pricing";
+import { marketOpen } from "@/lib/engine/pure";
 import { orderTypeAt, postJSON } from "./api";
-import { aggregate, pushTick, seedDemoCandles } from "./candles";
+import { mergeLive, pushTick } from "./candles";
 import ChartPanel from "./ChartPanel";
 import { SYMBOLS, WATCHLIST, isIndexFO } from "./constants";
 import { dateTime, inr, nameOf, nameOfKey, num, phaseLabel, statusLabel, timeOnly } from "./format";
@@ -16,6 +17,7 @@ import StatusStrip from "./StatusStrip";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
 import type { AccountRow, Candle, PlanRow } from "./types";
+import { useContracts } from "./useContracts";
 import { useQuotes } from "./useQuotes";
 import { useToast } from "./useToast";
 import { useTraderData } from "./useTraderData";
@@ -27,22 +29,15 @@ interface Props {
 }
 
 type Tab = "pos" | "ord" | "his";
-const today = () => new Date().toISOString().slice(0, 10);
-const hash = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
-
-function expiriesFor(u: string): string[] {
-  const all = EXPIRIES[u] ?? [];
-  const future = all.filter((e) => e >= today());
-  return future.length ? future : all;
-}
 
 export default function TerminalClient({ initialAccounts, plans, initialAccountId }: Props) {
   const [accountId, setAccountId] = useState<string | null>(initialAccountId);
   const data = useTraderData(initialAccounts, accountId);
-  const { quotes: spots, source, error: quoteError } = useQuotes(SYMBOLS);
+  const contracts = useContracts();
   const toast = useToast();
 
-  const [sel, setSel] = useState<InstrumentRef>(() => ({ underlying: "NIFTY", segment: "FUT", expiry: expiriesFor("NIFTY")[0] }));
+  const [sel, setSel] = useState<InstrumentRef>({ underlying: "NIFTY", segment: "FUT" });
+  const [chainExp, setChainExp] = useState("");
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
   const [tf, setTf] = useState(1);
   const [tab, setTab] = useState<Tab>("pos");
@@ -50,51 +45,83 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
 
-  // 1-minute spot candles per underlying, built from polled ticks. Demo source gets a labelled synthetic backfill.
-  const series = useRef(new Map<string, Candle[]>());
+  // Contracts that need live prices: the selected one, open positions and pending orders.
+  const contractKeys = useMemo(() => {
+    const ks = new Set<string>();
+    if (sel.segment !== "EQ" && sel.expiry) ks.add(instrumentKey(sel));
+    for (const p of data.positions) if (!p.instrument.includes("|EQ|")) ks.add(p.instrument);
+    for (const o of data.orders) if (o.status === "pending" && !o.instrument.includes("|EQ|")) ks.add(o.instrument);
+    return [...ks].slice(0, 40);
+  }, [sel, data.positions, data.orders]);
+  const { quotes: spots, source, error: quoteError } = useQuotes(SYMBOLS, contractKeys);
+
+  const spec = contracts.specs[sel.underlying];
+  const lot = sel.segment === "EQ" ? 1 : spec?.lot ?? null;
+
+  // Once the real contract list is in, give the futures selection its first real expiry.
+  useEffect(() => {
+    if (sel.segment === "FUT" && !sel.expiry && spec?.futExpiries[0]) setSel((c) => ({ ...c, expiry: spec.futExpiries[0] }));
+  }, [sel, spec]);
+
+  const spot = spots[sel.underlying] ?? null;
+  const ltp = priceOf(sel, spots) ?? null;
+  const key = instrumentKey(sel);
+  const fo = sel.segment !== "EQ";
+
+  // Live bars: the selected contract's real price folded into the current minute, only while the market is open.
+  const live = useRef(new Map<string, Candle[]>());
   const [version, setVersion] = useState(0);
   useEffect(() => {
-    const now = Date.now();
-    let changed = false;
-    for (const sym of SYMBOLS) {
-      const ltp = spots[sym];
-      if (ltp == null) continue;
-      let s = series.current.get(sym);
-      if (!s) s = source === "demo" ? seedDemoCandles(ltp, hash(sym)) : [];
-      series.current.set(sym, pushTick(s, ltp, now));
-      changed = true;
+    if (ltp == null || !marketOpen(Date.now())) return;
+    live.current.set(key, pushTick(live.current.get(key) ?? [], ltp, Date.now()));
+    setVersion((v) => v + 1);
+  }, [ltp, key]);
+
+  // Real exchange candles for the chart, refreshed every 30 seconds.
+  const [hist, setHist] = useState<{ k: string; candles: Candle[]; note: string | null }>({ k: "", candles: [], note: null });
+  useEffect(() => {
+    if (!contracts.ready && fo) return;
+    if (fo && !sel.expiry) return;
+    let stop = false;
+    const k = `${key}|${tf}`;
+    async function load() {
+      try {
+        const q = new URLSearchParams({ underlying: sel.underlying, segment: sel.segment, tf: String(tf) });
+        if (sel.strike != null) q.set("strike", String(sel.strike));
+        if (sel.expiry) q.set("expiry", sel.expiry);
+        const res = await fetch(`/api/history?${q}`, { cache: "no-store" });
+        const j = (await res.json()) as { ok: boolean; candles?: Candle[]; available?: boolean; error?: string };
+        if (stop) return;
+        if (j.ok) setHist({ k, candles: j.candles ?? [], note: j.available === false ? "No chart history for this contract." : null });
+        else setHist((h) => ({ k, candles: h.k === k ? h.candles : [], note: j.error ?? "Chart history is not available right now." }));
+      } catch { /* retry on the next interval */ }
     }
-    if (changed) setVersion((v) => v + 1);
-  }, [spots, source]);
+    load();
+    const t = setInterval(load, 30_000);
+    return () => { stop = true; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, tf, contracts.ready]);
 
   const account = data.accounts.find((a) => a.id === accountId) ?? null;
   const plan = plans.find((p) => p.key === account?.plan_key);
   const accPositions = useMemo(() => data.positions.filter((p) => p.account_id === accountId), [data.positions, accountId]);
   const m = account ? accountMetrics(account, plan, accPositions, spots) : null;
 
-  const spot = spots[sel.underlying] ?? null;
-  const ltp = spot == null ? null : priceInstrument(sel, spot);
-  const key = instrumentKey(sel);
-  const fo = sel.segment !== "EQ";
   const curPos = accPositions.find((p) => p.instrument === key) ?? null;
   const pending = data.orders.filter((o) => o.account_id === accountId && o.status === "pending" && o.instrument === key);
 
   const candles = useMemo(() => {
-    const base = aggregate((series.current.get(sel.underlying) ?? []).map((c) => ({ ...c })), tf).slice(-90);
-    if (sel.segment === "EQ" || spot == null) return base;
-    return base.map((c) => {
-      const o = priceInstrument(sel, c.o), cl = priceInstrument(sel, c.c);
-      const a = priceInstrument(sel, c.h), b = priceInstrument(sel, c.l);
-      return { t: c.t, o, c: cl, h: Math.max(o, cl, a, b), l: Math.min(o, cl, a, b) };
-    });
+    const h = hist.k === `${key}|${tf}` ? hist.candles : [];
+    return mergeLive(h, live.current.get(key) ?? [], tf).slice(-90);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, sel, tf]);
+  }, [version, hist, key, tf]);
 
   const blockedReason =
     !account ? "Select an account." :
     account.status === "breached" ? "This account is closed after a rule breach." :
     account.status === "passed" ? "This account has passed its phase and no longer accepts new orders." :
-    account.status === "closed" ? "This account is closed." : null;
+    account.status === "closed" ? "This account is closed." :
+    fo && lot == null ? "Loading contract details from the exchange…" : null;
 
   function pick(ref: InstrumentRef, side?: Side) {
     setSel(ref);
@@ -103,7 +130,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   }
 
   function pickUnderlying(u: string) {
-    pick(isIndexFO(u) ? { underlying: u, segment: "FUT", expiry: expiriesFor(u)[0] } : { underlying: u, segment: "EQ" });
+    pick(isIndexFO(u) ? { underlying: u, segment: "FUT", expiry: contracts.specs[u]?.futExpiries[0] } : { underlying: u, segment: "EQ" });
   }
 
   async function sendOrder(side: Side, units: number, orderType: "Market" | "Limit" | "Stop", price?: number): Promise<boolean> {
@@ -137,14 +164,14 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   }
 
   function submitTicket() {
-    const units = ticketUnits(sel, ticket.qty);
+    const units = ticketUnits(sel, ticket.qty, lot ?? 1);
     const price = Number(ticket.price);
     void sendOrder(ticket.side, units, ticket.type, ticket.type === "Market" ? undefined : price);
   }
 
   async function chartOrder(side: Side, price: number, qty: number) {
     if (ltp == null) return false;
-    const units = fo ? qty * lotSize(sel.underlying) : qty;
+    const units = fo ? qty * (lot ?? 1) : qty;
     const t = orderTypeAt(side, price, ltp);
     return sendOrder(side, units, t.orderType, t.price);
   }
@@ -184,8 +211,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     </label>
   );
 
-  const expiries = expiriesFor(sel.underlying);
-  const expiry = sel.expiry && expiries.includes(sel.expiry) ? sel.expiry : expiries[0] ?? "";
+  const optExpiries = spec?.optExpiries ?? [];
+  const chainExpiry = optExpiries.includes(chainExp) ? chainExp : optExpiries[0] ?? "";
   const acctOrders = data.orders.filter((o) => o.account_id === accountId).slice(0, 30);
   const noPrices = Object.keys(spots).length === 0;
 
@@ -207,14 +234,14 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       <div className="tr-grid">
         <div className="tr-col">
           <div className="tr-glass tr-card">
-            <h3>Watchlist {source === "demo" && <span className="tr-pill">Demo</span>}</h3>
+            <h3>Watchlist {source === "demo" && <span className="tr-pill">Dev demo</span>}</h3>
             <div className="tr-wl">
               <div className="tr-sep">Index F&amp;O</div>
               {WATCHLIST.map((w, i) => (
                 <div key={w.k}>
                   {i === 3 && <div className="tr-sep">Stocks · {5}× intraday</div>}
                   <button aria-pressed={sel.underlying === w.k} onClick={() => pickUnderlying(w.k)}>
-                    <span><b>{w.k}</b><small>{w.fo ? `Lot ${lotSize(w.k)}` : "Cash"}</small></span>
+                    <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : "Cash"}</small></span>
                     <span className="px">{spots[w.k] == null ? "—" : num(spots[w.k])}</span>
                   </button>
                 </div>
@@ -223,6 +250,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           </div>
           <OrderTicket
             inst={sel}
+            lot={lot ?? 1}
             ltp={ltp}
             spot={spot}
             state={ticket}
@@ -242,7 +270,6 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 <div className="t">{nameOf(sel)}</div>
                 <div className="tr-mono" style={{ fontSize: ".9rem" }}>{ltp == null ? "—" : num(ltp)}</div>
               </div>
-              {source === "demo" && <span className="tr-pill">Demo history</span>}
             </div>
             <ChartPanel
               title={nameOf(sel)}
@@ -255,7 +282,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               qtyLabel={fo ? "Lots" : "Shares"}
               disabled={!!blockedReason}
               disabledText={blockedReason ?? undefined}
-              note={noPrices ? "Waiting for prices…" : "Building the chart from live prices…"}
+              note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
               onOrder={chartOrder}
             />
           </div>
@@ -341,9 +368,10 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
             <OptionChain
               underlying={sel.underlying}
               spot={spot}
-              expiries={isIndexFO(sel.underlying) ? expiries : []}
-              expiry={expiry}
-              onExpiry={(e) => pick({ ...sel, expiry: e })}
+              expiries={isIndexFO(sel.underlying) ? optExpiries : []}
+              expiry={chainExpiry}
+              lot={spec?.lot ?? null}
+              onExpiry={setChainExp}
               selected={sel}
               onSelect={(ref, side) => pick(ref, side)}
               disabled={!!blockedReason}

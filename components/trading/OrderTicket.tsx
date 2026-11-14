@@ -1,6 +1,6 @@
 "use client";
 import type { InstrumentRef, OrderType, Side } from "@/lib/types";
-import { lotSize, marginRequired } from "@/lib/market/pricing";
+import { marginRequired } from "@/lib/market/pricing";
 import { STOCK_LEVERAGE } from "./constants";
 import { inr, nameOf, num } from "./format";
 
@@ -14,6 +14,8 @@ export interface TicketState {
 
 interface Props {
   inst: InstrumentRef;
+  /** Real lot size of the contract (1 for cash stocks). */
+  lot: number;
   ltp: number | null;
   spot: number | null;
   state: TicketState;
@@ -26,14 +28,14 @@ interface Props {
 }
 
 /** Units for the ticket quantity: lots * lot size for F&O, shares for stocks. */
-export function ticketUnits(inst: InstrumentRef, qty: string): number {
+export function ticketUnits(inst: InstrumentRef, qty: string, lot: number): number {
   const q = Math.max(0, Math.floor(Number(qty)) || 0);
-  return inst.segment === "EQ" ? q : q * lotSize(inst.underlying);
+  return inst.segment === "EQ" ? q : q * lot;
 }
 
-export default function OrderTicket({ inst, ltp, spot, state, onChange, available, disabledReason, busy, message, onSubmit }: Props) {
+export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, available, disabledReason, busy, message, onSubmit }: Props) {
   const fo = inst.segment !== "EQ";
-  const units = ticketUnits(inst, state.qty);
+  const units = ticketUnits(inst, state.qty, lot);
   const limit = Number(state.price);
   const px = state.type === "Market" ? ltp : limit > 0 ? limit : ltp;
   const margin = px != null && spot != null && units > 0 ? marginRequired(inst, state.side, units, px, spot) : null;
@@ -65,7 +67,7 @@ export default function OrderTicket({ inst, ltp, spot, state, onChange, availabl
         ))}
       </div>
       <label className="tr-f">
-        {fo ? `Lots (1 lot = ${lotSize(inst.underlying)})` : "Shares"}
+        {fo ? `Lots (1 lot = ${lot})` : "Shares"}
         <input type="number" min={1} step={1} value={state.qty} onChange={(e) => set({ qty: e.target.value })} />
       </label>
       {needsPrice && (

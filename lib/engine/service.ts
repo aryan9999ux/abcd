@@ -1,14 +1,15 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../supabase/admin";
-import { getSpot } from "../market/server-feed";
-import { marginRequired, priceInstrument } from "../market/pricing";
+import { ensurePrice, getPrice, getSpot, want } from "../market/server-feed";
+import { ensureInstruments, instOf, specOf } from "../market/instruments";
+import { marginRequired } from "../market/pricing";
 import { instrumentKey, parseInstrumentKey, type CheckoutRequest, type InstrumentRef, type OrderType, type PlaceOrderRequest, type Side } from "../types";
 import { HttpError } from "./http";
 import { withLock } from "./lock";
 import {
   classifyOrder, daysBetween, directionOf, evaluateRisk, hasMargin, increasingQty, isTriggered, istDate, netFill, opposite,
-  pastEntryCutoff, payoutCheck, profitableDays, riskAmount, round2, stopOnCorrectSide, strikeInRange, unrealized, validateInstrument,
+  marketOpen, pastEntryCutoff, payoutCheck, profitableDays, riskAmount, round2, stopOnCorrectSide, strikeInRange, unrealized, validateInstrument,
   type Breach, type PositionState,
 } from "./pure";
 import { PLAN_RULES, type PlanRules } from "../rules";
@@ -84,12 +85,24 @@ function spotFor(ref: InstrumentRef): number {
   return s;
 }
 
+/** Real live price of a contract; refuses to continue (never guesses) when the feed has none. */
+function markFor(ref: InstrumentRef): number {
+  const p = getPrice(ref);
+  if (p == null) throw new HttpError(503, `No live price for ${ref.underlying}${ref.segment === "EQ" ? "" : " " + ref.segment} right now. Try again in a moment.`);
+  return p;
+}
+
+const MARKET_HOURS_ON = process.env.MARKET_HOURS_OFF !== "1";
+function requireMarketOpen(now: number) {
+  if (MARKET_HOURS_ON && !marketOpen(now)) throw new HttpError(422, "The market is closed. Orders are accepted Monday to Friday, 9:15 AM to 3:30 PM IST.");
+}
+
 function book(ctx: Ctx) {
   let upl = 0, used = 0;
   for (const p of ctx.positions) {
     const ref = parseInstrumentKey(p.instrument);
     const spot = spotFor(ref);
-    const mark = priceInstrument(ref, spot, ctx.now);
+    const mark = markFor(ref);
     upl += unrealized({ side: p.side, qty: p.qty, avg: p.avg_price }, mark);
     used += marginRequired(ref, p.side, p.qty, p.avg_price, spot);
   }
@@ -210,7 +223,7 @@ async function squareOff(ctx: Ctx, breach: Breach) {
     .eq("account_id", ctx.acct.id).eq("status", "pending"), "cancel pending");
   for (const p of [...ctx.positions]) {
     const ref = parseInstrumentKey(p.instrument);
-    const px = priceInstrument(ref, spotFor(ref), ctx.now);
+    const px = markFor(ref);
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
   }
   const patch = { status: "breached", breach_reason: breachText(breach, ctx) };
@@ -336,13 +349,17 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
     const ctx = await loadCtx(admin(), req.accountId, userId);
     requireActive(ctx);
     const ref = refOf(req);
-    const bad = validateInstrument(ref, req.qty, ctx.now);
+    await ensureInstruments();
+    const bad = validateInstrument(ref, req.qty, specOf(ref.underlying));
     if (bad) throw new HttpError(400, bad);
+    if (ref.segment !== "EQ" && !instOf(ref)) throw new HttpError(400, "That contract is not listed on the exchange.");
+    requireMarketOpen(ctx.now);
+    await ensurePrice(ref);
     const spot = spotFor(ref);
     if (ref.strike != null && !strikeInRange(ref.strike, spot)) throw new HttpError(400, "That strike is too far from the current price.");
     await rollDay(ctx);
 
-    const ltp = priceInstrument(ref, spot, ctx.now);
+    const ltp = markFor(ref);
     const limit = req.orderType === "Market" ? undefined : (req.price ?? undefined);
     const action = classifyOrder(req.orderType, req.side, limit, ltp);
     if (action === "invalid") {
@@ -404,12 +421,13 @@ export async function closePosition(userId: string, req: { accountId: string; in
     requireActive(ctx);
     const p = ctx.positions.find((x) => x.instrument === req.instrument);
     if (!p) throw new HttpError(404, "You have no open position in that instrument.");
+    requireMarketOpen(ctx.now);
     const held = ctx.now - Date.parse(p.opened_at);
     if (held < ctx.acct.rules.minHoldSeconds * 1000) {
       throw new HttpError(422, `A position must stay open for ${ctx.acct.rules.minHoldSeconds} seconds. Try again in ${Math.ceil((ctx.acct.rules.minHoldSeconds * 1000 - held) / 1000)}s. Your stop loss still works.`);
     }
     const ref = parseInstrumentKey(p.instrument);
-    const px = priceInstrument(ref, spotFor(ref), ctx.now);
+    const px = markFor(ref);
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
     await afterChange(ctx);
     return { fillPrice: px };
@@ -420,12 +438,13 @@ export async function closeAll(userId: string, req: { accountId: string }) {
   return withLock(req.accountId, async () => {
     const ctx = await loadCtx(admin(), req.accountId, userId);
     requireActive(ctx);
+    requireMarketOpen(ctx.now);
     const young = ctx.positions.find((p) => ctx.now - Date.parse(p.opened_at) < ctx.acct.rules.minHoldSeconds * 1000);
     if (young) throw new HttpError(422, `Positions must stay open for ${ctx.acct.rules.minHoldSeconds} seconds before they can be closed. Your stop losses still work.`);
     let closed = 0;
     for (const p of [...ctx.positions]) {
       const ref = parseInstrumentKey(p.instrument);
-      const px = priceInstrument(ref, spotFor(ref), ctx.now);
+      const px = markFor(ref);
       await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
       closed++;
     }
@@ -485,9 +504,8 @@ async function processAccount(sb: Sb, accountId: string) {
   for (const p of [...ctx.positions]) {
     if (p.stop_loss == null) continue;
     const ref = parseInstrumentKey(p.instrument);
-    const spot = getSpot(ref.underlying);
-    if (spot == null) continue;
-    const ltp = priceInstrument(ref, spot, ctx.now);
+    const ltp = getPrice(ref);
+    if (ltp == null) continue;
     const hit = p.side === "Buy" ? ltp <= p.stop_loss : ltp >= p.stop_loss;
     if (!hit) continue;
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: ltp, type: "Stop" });
@@ -499,9 +517,8 @@ async function processAccount(sb: Sb, accountId: string) {
     const ref: InstrumentRef = {
       underlying: o.underlying, segment: o.segment, strike: o.strike == null ? undefined : num(o.strike), expiry: o.expiry ?? undefined,
     };
-    const spot = getSpot(ref.underlying);
-    if (spot == null) continue;
-    const ltp = priceInstrument(ref, spot, ctx.now);
+    const ltp = getPrice(ref);
+    if (ltp == null) continue;
     if (!isTriggered(o.order_type, o.side, num(o.price), ltp)) continue;
 
     const key = instrumentKey(ref);
@@ -522,6 +539,8 @@ async function processAccount(sb: Sb, accountId: string) {
       must(await sb.from("orders").update({ status: "rejected", reject_reason: "Quantity is more than the open position" }).eq("id", o.id), "reject order");
       continue;
     }
+    const spot = getSpot(ref.underlying);
+    if (spot == null) continue;
     const need = inc > 0 ? marginRequired(ref, o.side, inc, ltp, spot) : 0;
     const b = book(ctx);
     if (!hasMargin(need, b.equity, b.used)) {
@@ -543,11 +562,14 @@ async function processAccount(sb: Sb, accountId: string) {
 export async function runTick() {
   const sb = admin();
   const [o, p] = await Promise.all([
-    sb.from("orders").select("account_id").eq("status", "pending").limit(2000),
-    sb.from("positions").select("account_id").limit(5000),
+    sb.from("orders").select("account_id,instrument").eq("status", "pending").limit(2000),
+    sb.from("positions").select("account_id,instrument").limit(5000),
   ]);
   const ids = new Set<string>();
-  for (const r of [...(must(o, "scan orders") ?? []), ...(must(p, "scan positions") ?? [])]) ids.add(r.account_id as string);
+  const rows = [...(must(o, "scan orders") ?? []), ...(must(p, "scan positions") ?? [])];
+  for (const r of rows) ids.add(r.account_id as string);
+  // Keep every contract that someone holds or waits on priced by the live feed.
+  want([...new Set(rows.map((r: { instrument: string }) => r.instrument).filter((k: string) => k.includes("|") && !k.includes("|EQ|")))], 60_000);
   let done = 0;
   for (const id of ids) {
     try {

@@ -22,7 +22,11 @@ interface Props {
 export default function DashboardClient({ initialAccounts, plans, initialAccountId }: Props) {
   const [accountId, setAccountId] = useState<string | null>(initialAccountId);
   const data = useTraderData(initialAccounts, accountId);
-  const { quotes: spots, error: quoteError } = useQuotes(SYMBOLS);
+  const heldKeys = useMemo(
+    () => [...new Set(data.positions.filter((p) => !p.instrument.includes("|EQ|")).map((p) => p.instrument))].slice(0, 40),
+    [data.positions],
+  );
+  const { quotes: spots, error: quoteError } = useQuotes(SYMBOLS, heldKeys);
 
   const planOf = (a: AccountRow) => plans.find((p) => p.key === a.plan_key);
   const metricsById = useMemo(() => {

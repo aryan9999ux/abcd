@@ -3,7 +3,7 @@
  * (netting, order triggers, margin headroom, loss limits, instrument validity) lives here so it can be tested alone.
  */
 import type { InstrumentRef, OrderType, Side } from "../types";
-import { expiriesFor, isIndex, isStock, lotSize, strikeStep } from "../market/pricing";
+import { expiriesOf, isIndex, isStock, type ContractSpec } from "../market/pricing";
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 export const dir = (s: Side) => (s === "Buy" ? 1 : -1);
@@ -139,8 +139,8 @@ export const daysBetween = (from: string, to: string) => Math.round((Date.parse(
 
 export const hasMargin = (need: number, equity: number, used: number) => need <= equity - used + 1e-9;
 
-/** Shape checks that do not need prices. Returns an error message or null. */
-export function validateInstrument(ref: InstrumentRef, qty: number, now = Date.now()): string | null {
+/** Shape checks that do not need prices. `spec` is the real contract info for the underlying (null when not loaded). */
+export function validateInstrument(ref: InstrumentRef, qty: number, spec: ContractSpec | null | undefined): string | null {
   const { underlying, segment, strike, expiry } = ref;
   if (!Number.isInteger(qty) || qty <= 0) return "Quantity must be a whole number above zero.";
   if (segment === "EQ") {
@@ -149,13 +149,21 @@ export function validateInstrument(ref: InstrumentRef, qty: number, now = Date.n
     return null;
   }
   if (!isIndex(underlying)) return `${underlying} has no futures or options here.`;
-  if (!expiry || !expiriesFor(underlying, now).includes(expiry)) return "That expiry is not available.";
-  const lot = lotSize(underlying);
-  if (qty % lot !== 0) return `Quantity must be a multiple of the lot size (${lot}).`;
+  if (!spec) return "Contract details are not loaded yet. Try again in a moment.";
+  if (!expiry || !expiriesOf(spec, segment).includes(expiry)) return "That expiry is not available.";
+  if (qty % spec.lot !== 0) return `Quantity must be a multiple of the lot size (${spec.lot}).`;
   if (segment === "FUT") return strike != null ? "Futures have no strike." : null;
   if (strike == null || !(strike > 0)) return "Options need a strike.";
-  if (strike % strikeStep(underlying) !== 0) return `Strike must be a multiple of ${strikeStep(underlying)}.`;
+  if (strike % spec.strikeStep !== 0) return `Strike must be a multiple of ${spec.strikeStep}.`;
   return null;
+}
+
+/** NSE / BSE cash and F&O session: Monday to Friday, 09:15 to 15:30 IST. Exchange holidays are not known here. */
+export function marketOpen(now: number): boolean {
+  const d = new Date(now + 330 * 60 * 1000);
+  const dow = d.getUTCDay();
+  const min = d.getUTCHours() * 60 + d.getUTCMinutes();
+  return dow >= 1 && dow <= 5 && min >= 9 * 60 + 15 && min < 15 * 60 + 30;
 }
 
 /** Strikes far from spot are not offered; the engine refuses them too. */

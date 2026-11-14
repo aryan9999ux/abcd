@@ -12,7 +12,7 @@ export const revalidate = 60;
 const FAQ: [string, string][] = [
   ["Is the account real money?", "No. Accounts use simulated capital on our own terminal. The fee you pay is a platform fee. Rewards are paid by Apex Capital Funded under the Terms."],
   ["Is Apex Capital Funded a broker?", "No. We do not execute orders on any exchange and we do not hold client securities. Check the Terms for the exact scope of the service."],
-  ["Where do the prices come from?", "The terminal shows market prices from a data provider. Until a licensed feed is connected, the preview uses demo prices."],
+  ["Where do the prices come from?", "Every price in the terminal is a live NSE or BSE price: spot, futures and option premiums. Fills use those prices, and orders are only accepted while the market is open, Monday to Friday, 9:15 AM to 3:30 PM IST. Implied volatility and delta are calculated from the live premium."],
   ["What happens if I breach a limit?", "The account closes at the breach and you can start a new one. Limits are shown live on your dashboard and terminal."],
   ["Can I run more than one account?", "Yes. Buy as many accounts as you like from your dashboard and switch between them in the terminal."],
 ];

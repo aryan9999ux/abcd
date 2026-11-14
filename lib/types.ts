@@ -46,9 +46,17 @@ export type ApiResult<T extends object = object> = ({ ok: true } & T) | { ok: fa
 /** GET /api/quotes?symbols=NIFTY,BANKNIFTY  ->  spot LTP per underlying. Server-authoritative. */
 export interface QuotesResponse {
   ts: number;
-  source: string; // "demo" | "zerodha"
+  source: string; // "demo" (local development only) | "zerodha"
+  /** Spot by underlying, plus contract prices by instrumentKey when asked for. All from the exchange feed. */
   quotes: Record<string, number>;
+  /** True once the exchange contract list (lot sizes, expiries) is loaded. */
+  ready?: boolean;
 }
+
+export interface Candle { t: number; o: number; h: number; l: number; c: number }
+
+export interface ChainSide { ltp: number | null; bid: number | null; ask: number | null; oi: number | null; iv: number | null; delta: number | null }
+export interface ChainRow { strike: number; atm: boolean; ce: ChainSide; pe: ChainSide }
 
 /** POST /api/checkout. Dev mode marks the purchase paid immediately and creates the trading account. */
 export interface CheckoutRequest { planKey: string; accountSize: number }

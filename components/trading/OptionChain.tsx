@@ -1,7 +1,6 @@
 "use client";
-import { useMemo } from "react";
-import type { InstrumentRef, Side } from "@/lib/types";
-import { lotSize, optionGreeks, priceInstrument, strikeStep } from "@/lib/market/pricing";
+import { useEffect, useState } from "react";
+import type { ChainRow, InstrumentRef, Side } from "@/lib/types";
 import { num } from "./format";
 
 interface Props {
@@ -9,6 +8,7 @@ interface Props {
   spot: number | null;
   expiries: string[];
   expiry: string;
+  lot: number | null;
   onExpiry: (e: string) => void;
   selected: InstrumentRef;
   onSelect: (ref: InstrumentRef, side?: Side) => void;
@@ -18,28 +18,47 @@ interface Props {
 const dateLabel = (e: string) =>
   new Date(e + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
+/** Real chain from the exchange, refreshed about once a second while the tab is visible. */
+function useChain(underlying: string, expiry: string) {
+  const [rows, setRows] = useState<ChainRow[]>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  useEffect(() => {
+    if (!underlying || !expiry) return;
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    setRows([]);
+    setState("loading");
+    async function load() {
+      if (stop) return;
+      if (!document.hidden) {
+        try {
+          const res = await fetch(`/api/chain?underlying=${underlying}&expiry=${expiry}`, { cache: "no-store" });
+          const j = (await res.json()) as { ok: boolean; ready?: boolean; rows?: ChainRow[] };
+          if (!stop && j.ok) { setRows(j.rows ?? []); setState(j.ready ? "ready" : "loading"); }
+          else if (!stop) setState("error");
+        } catch { if (!stop) setState("error"); }
+      }
+      if (!stop) timer = setTimeout(load, 1100);
+    }
+    load();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [underlying, expiry]);
+  return { rows, state };
+}
+
+const fixed = (v: number | null, d: number) => (v == null ? "—" : v.toFixed(d));
+
 /** CE / PE chain around the at-the-money strike. Hover a premium for quick Buy / Sell; click it to load the contract. */
-export default function OptionChain({ underlying, spot, expiries, expiry, onExpiry, selected, onSelect, disabled }: Props) {
-  const step = strikeStep(underlying);
-  const rows = useMemo(() => {
-    if (spot == null || !expiry) return [];
-    const atm = Math.round(spot / step) * step;
-    return Array.from({ length: 17 }, (_, i) => {
-      const k = atm + (i - 8) * step;
-      const ce: InstrumentRef = { underlying, segment: "CE", strike: k, expiry };
-      const pe: InstrumentRef = { underlying, segment: "PE", strike: k, expiry };
-      const gc = optionGreeks(ce, spot), gp = optionGreeks(pe, spot);
-      const iv = (v: number) => (v < 2 ? v * 100 : v).toFixed(1);
-      return { k, atm: i === 8, ce, pe, cePx: priceInstrument(ce, spot), pePx: priceInstrument(pe, spot), ceIv: iv(gc.iv), peIv: iv(gp.iv), ceD: gc.delta, peD: gp.delta };
-    });
-  }, [underlying, spot, expiry, step]);
+export default function OptionChain({ underlying, spot, expiries, expiry, lot, onExpiry, selected, onSelect, disabled }: Props) {
+  const { rows, state } = useChain(expiries.length ? underlying : "", expiry);
 
   const isSel = (r: InstrumentRef) => selected.segment === r.segment && selected.strike === r.strike && selected.expiry === r.expiry && selected.underlying === r.underlying;
 
-  function cell(ref: InstrumentRef, px: number, cls: string, itm: boolean) {
+  function cell(ref: InstrumentRef, px: number | null, cls: string, itm: boolean, title: string) {
     const quick = (side: Side) => (e: React.MouseEvent) => { e.stopPropagation(); if (!disabled) onSelect(ref, side); };
     return (
       <td
+        title={title}
         className={`cell ${cls} ${itm ? "itm" : ""} ${isSel(ref) ? "sel" : ""}`}
         tabIndex={0}
         onClick={() => onSelect(ref)}
@@ -51,7 +70,7 @@ export default function OptionChain({ underlying, spot, expiries, expiry, onExpi
             <button className="s" onClick={quick("Sell")} aria-label={`Sell ${ref.strike} call`}>S</button>
           </span>
         )}
-        {num(px)}
+        {px == null ? "—" : num(px)}
         {cls === "pe" && (
           <span className="bs">
             <button className="b" onClick={quick("Buy")} aria-label={`Buy ${ref.strike} put`}>B</button>
@@ -76,7 +95,7 @@ export default function OptionChain({ underlying, spot, expiries, expiry, onExpi
           </select>
         </label>
         <div className="tr-stat"><small>Spot</small><div className="tr-mono">{spot == null ? "—" : num(spot)}</div></div>
-        <div className="tr-stat"><small>Lot size</small><div className="tr-mono">{lotSize(underlying)}</div></div>
+        <div className="tr-stat"><small>Lot size</small><div className="tr-mono">{lot ?? "—"}</div></div>
       </div>
       <div className="tr-scroll tall">
         <table>
@@ -84,25 +103,28 @@ export default function OptionChain({ underlying, spot, expiries, expiry, onExpi
             <tr><th>IV</th><th>Δ</th><th>CE</th><th>Strike</th><th>PE</th><th>Δ</th><th>IV</th></tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={7} className="tr-empty">Waiting for prices…</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="tr-empty">{state === "error" ? "Could not load the chain. Retrying…" : "Loading the live chain from the exchange…"}</td></tr>}
             {rows.map((r) => {
-              const ceItm = spot != null && r.k < spot, peItm = spot != null && r.k > spot;
+              const ceItm = spot != null && r.strike < spot, peItm = spot != null && r.strike > spot;
+              const ce: InstrumentRef = { underlying, segment: "CE", strike: r.strike, expiry };
+              const pe: InstrumentRef = { underlying, segment: "PE", strike: r.strike, expiry };
+              const tip = (x: ChainRow["ce"]) => `Bid ${x.bid ?? "—"} · Ask ${x.ask ?? "—"} · OI ${x.oi == null ? "—" : x.oi.toLocaleString("en-IN")}`;
               return (
-                <tr key={r.k} className={r.atm ? "atm" : ""}>
-                  <td className={"tr-muted tr-mono " + (ceItm ? "itm" : "")}>{r.ceIv}</td>
-                  <td className={"tr-muted tr-mono " + (ceItm ? "itm" : "")}>{r.ceD.toFixed(2)}</td>
-                  {cell(r.ce, r.cePx, "ce", ceItm)}
-                  <td className="k">{r.k}</td>
-                  {cell(r.pe, r.pePx, "pe", peItm)}
-                  <td className={"tr-muted tr-mono " + (peItm ? "itm" : "")}>{r.peD.toFixed(2)}</td>
-                  <td className={"tr-muted tr-mono " + (peItm ? "itm" : "")}>{r.peIv}</td>
+                <tr key={r.strike} className={r.atm ? "atm" : ""}>
+                  <td className={"tr-muted tr-mono " + (ceItm ? "itm" : "")}>{fixed(r.ce.iv, 1)}</td>
+                  <td className={"tr-muted tr-mono " + (ceItm ? "itm" : "")}>{fixed(r.ce.delta, 2)}</td>
+                  {cell(ce, r.ce.ltp, "ce", ceItm, tip(r.ce))}
+                  <td className="k">{r.strike}</td>
+                  {cell(pe, r.pe.ltp, "pe", peItm, tip(r.pe))}
+                  <td className={"tr-muted tr-mono " + (peItm ? "itm" : "")}>{fixed(r.pe.delta, 2)}</td>
+                  <td className={"tr-muted tr-mono " + (peItm ? "itm" : "")}>{fixed(r.pe.iv, 1)}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="tr-hint">Premiums, IV and delta come from the pricing model, not from exchange quotes. Hover a premium for quick Buy / Sell.</p>
+      <p className="tr-hint">Premiums are live exchange prices (hover for bid, ask and open interest). IV and delta are calculated from those premiums. Click a premium to trade it.</p>
     </>
   );
 }

@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
  * for an access_token. The token expires around 06:00 IST the next morning, so the admin logs in daily.
  * The token lives in process memory only. A server restart means one more click on the admin page.
  */
-const BASE = "https://api.kite.trade";
+const BASE = process.env.KITE_BASE_URL || "https://api.kite.trade"; // override is for pointing tests at a local stand-in only
 const IST_MS = 5.5 * 3600_000;
 
 export interface KiteSession {
@@ -92,25 +92,57 @@ export async function exchangeRequestToken(requestToken: string): Promise<KiteSe
 const INDEX_KEYS: Record<string, string> = { NIFTY: "NSE:NIFTY 50", BANKNIFTY: "NSE:NIFTY BANK", SENSEX: "BSE:SENSEX" };
 export const kiteKey = (symbol: string) => INDEX_KEYS[symbol] ?? `NSE:${symbol}`;
 
-/** Last traded price for several symbols in one call (Kite allows about one call per second). */
-export async function fetchLtp(symbols: string[]): Promise<Record<string, number>> {
+async function kiteGet(path: string): Promise<Response> {
   const s = kiteSession();
   if (!s) throw new Error("Not connected to Zerodha.");
-  const keys = symbols.map(kiteKey);
-  const qs = keys.map((k) => `i=${encodeURIComponent(k)}`).join("&");
-  const res = await fetch(`${BASE}/quote/ltp?${qs}`, {
+  const res = await fetch(`${BASE}${path}`, {
     headers: { "X-Kite-Version": "3", Authorization: `token ${process.env.KITE_API_KEY}:${s.accessToken}` },
     cache: "no-store",
   });
-  const json = (await res.json().catch(() => null)) as { status?: string; message?: string; error_type?: string; data?: Record<string, { last_price?: number }> } | null;
-  if (!res.ok || json?.status !== "success" || !json.data) {
-    if (res.status === 403 || json?.error_type === "TokenException") state.session = undefined;
+  if (res.status === 403) state.session = undefined; // token no longer valid
+  return res;
+}
+
+async function kiteJson<T>(path: string): Promise<T> {
+  const res = await kiteGet(path);
+  const json = (await res.json().catch(() => null)) as { status?: string; message?: string; data?: T } | null;
+  if (!res.ok || json?.status !== "success" || json.data === undefined) {
     throw new Error(json?.message || `Zerodha answered with status ${res.status}.`);
   }
-  const out: Record<string, number> = {};
-  symbols.forEach((sym, i) => {
-    const p = json.data![keys[i]]?.last_price;
-    if (typeof p === "number" && p > 0) out[sym] = p;
-  });
-  return out;
+  return json.data;
+}
+
+export interface KiteQuote {
+  last_price?: number;
+  oi?: number;
+  volume?: number;
+  depth?: { buy?: { price: number; quantity: number }[]; sell?: { price: number; quantity: number }[] };
+}
+
+/** Full quotes (last price, open interest, best bid and ask) for up to 500 "EXCHANGE:SYMBOL" keys in one call. */
+export async function fetchQuotes(keys: string[]): Promise<Record<string, KiteQuote>> {
+  if (!keys.length) return {};
+  const qs = keys.slice(0, 500).map((k) => `i=${encodeURIComponent(k)}`).join("&");
+  return kiteJson<Record<string, KiteQuote>>(`/quote?${qs}`);
+}
+
+/** The instrument master for one exchange, as CSV text. */
+export async function fetchInstrumentsCsv(exchange: "NFO" | "BFO" | "NSE" | "BSE"): Promise<string> {
+  const res = await kiteGet(`/instruments/${exchange}`);
+  if (!res.ok) throw new Error(`Zerodha instrument list ${exchange} answered with status ${res.status}.`);
+  return res.text();
+}
+
+export type KiteInterval = "minute" | "5minute" | "15minute";
+
+/** Real historical candles: [timestamp, open, high, low, close, volume]. */
+export async function fetchCandles(token: number, interval: KiteInterval, from: string, to: string) {
+  const q = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&oi=0`;
+  const d = await kiteJson<{ candles: [string, number, number, number, number, number][] }>(`/instruments/historical/${token}/${interval}?${q}`);
+  return d.candles;
+}
+
+export function dropSession(reason: string) {
+  state.session = undefined;
+  state.lastError = reason;
 }

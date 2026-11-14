@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/engine/admin";
 import { HttpError } from "@/lib/engine/http";
 import { ensureEngine } from "@/lib/engine/runtime";
 import { feedStats } from "@/lib/market/server-feed";
+import { contractsReady } from "@/lib/market/instruments";
 import { kiteStatus } from "@/lib/market/kite";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,9 @@ export default async function ZerodhaAdmin({ searchParams }: { searchParams: Pro
 
       <div className="glass" style={{ padding: 24, marginTop: 20, display: "grid", gap: 14, maxWidth: 720 }}>
         <Row k="Price source in use" v={<span className={"pill " + (modeOk ? "up" : "warn")}>{f.source}</span>} />
-        {!modeOk && <p className="muted" style={{ fontSize: ".85rem" }}>The server is on demo prices. Set <code>PRICE_SOURCE=zerodha</code> in the server settings and restart to use Zerodha.</p>}
+        {!modeOk && <p className="muted" style={{ fontSize: ".85rem" }}>This server is on demo prices (local development only). A production server always uses Zerodha.</p>}
+        <Row k="Contract list" v={contractsReady() ? <span className="pill up">Loaded from the exchange</span> : <span className="pill warn">Not loaded</span>} />
+        <Row k="Contracts being priced" v={String(f.watched)} />
         <Row k="Zerodha keys on server" v={k.configured ? "Set" : "Missing"} />
         <Row k="Login" v={connected ? <span className="pill up">Connected as {k.session!.userName}</span> : <span className="pill warn">Not connected</span>} />
         <Row k="Connected at" v={fmt(k.session?.connectedAt ?? null)} />

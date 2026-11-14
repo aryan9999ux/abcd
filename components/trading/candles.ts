@@ -2,41 +2,6 @@ import type { Candle } from "./types";
 
 const MIN = 60_000;
 
-function rng(seed: number) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/**
- * Demo-only backfill of 1-minute candles that ends exactly at the current spot.
- * Only used when the price source is "demo". Live sources build candles from ticks alone,
- * because vendor terms do not allow storing or replaying their history.
- */
-export function seedDemoCandles(spot: number, seed: number, n = 600, now = Date.now()): Candle[] {
-  const r = rng(seed);
-  const raw: Candle[] = [];
-  let p = spot;
-  const end = Math.floor(now / MIN) * MIN;
-  for (let i = 0; i < n; i++) {
-    const o = p;
-    let h = o, l = o, x = o;
-    for (let k = 0; k < 6; k++) {
-      x *= 1 + (r() - 0.5) * 0.0011;
-      h = Math.max(h, x);
-      l = Math.min(l, x);
-    }
-    raw.push({ t: end - (n - 1 - i) * MIN, o, h, l, c: x });
-    p = x;
-  }
-  const k = spot / raw[raw.length - 1].c;
-  return raw.map((c) => ({ t: c.t, o: c.o * k, h: c.h * k, l: c.l * k, c: c.c * k }));
-}
-
 /** Fold a tick into the 1-minute series. Returns a new array only when a minute rolls over. */
 export function pushTick(series: Candle[], ltp: number, ts: number): Candle[] {
   const bucket = Math.floor(ts / MIN) * MIN;
@@ -64,6 +29,22 @@ export function aggregate(series: Candle[], m: number): Candle[] {
       last.l = Math.min(last.l, c.l);
       last.c = c.c;
     } else out.push({ t: b, o: c.o, h: c.h, l: c.l, c: c.c });
+  }
+  return out;
+}
+
+/** Real exchange candles with the live price folded into the current bar. Never invents a bar. */
+export function mergeLive(hist: Candle[], live: Candle[], tfMin: number): Candle[] {
+  const out = hist.map((c) => ({ ...c }));
+  const size = tfMin * MIN;
+  for (const c of aggregate(live.map((x) => ({ ...x })), tfMin)) {
+    const last = out[out.length - 1];
+    if (last && c.t < last.t) continue;
+    if (last && last.t === c.t) {
+      last.h = Math.max(last.h, c.h);
+      last.l = Math.min(last.l, c.l);
+      last.c = c.c;
+    } else if (!last || c.t >= last.t + size) out.push(c);
   }
   return out;
 }
