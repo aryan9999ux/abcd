@@ -105,7 +105,7 @@ nav.links a:hover { color: var(--fg); background: var(--surface2); }
 .facts > div:last-child { border: 0; }
 .facts.three { --n: 3; }
 .facts b { display: block; font: 600 1.25rem var(--f-display); letter-spacing: -.03em; }
-.facts span { color: var(--muted); font-size: .82rem; }
+.facts > div > span { color: var(--muted); font-size: .82rem; }
 @media (max-width: 760px) { .facts { grid-template-columns: repeat(2, 1fr); } .facts > div:nth-child(2) { border-right: 0; } .facts > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); } }
 @media (max-width: 960px) { .hero { grid-template-columns: 1fr; padding-block: 44px 28px; gap: 36px; } }
 
@@ -116,12 +116,18 @@ nav.links a:hover { color: var(--fg); background: var(--surface2); }
 .mock .tb span { margin-left: auto; font: 600 .68rem var(--f-body); color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
 .mock .body { display: grid; grid-template-columns: 138px 1fr; min-height: 300px; }
 .mock .wl { border-right: 1px solid var(--line); padding: 8px 0; }
-.mock .wl div { display: flex; justify-content: space-between; padding: 8px 12px; font-size: .74rem; }
+.mock .wl div { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; font-size: .74rem; }
+.mock .wl svg path { fill: none; stroke: var(--up); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.4s var(--ease) forwards; }
+.mock .wl svg path.dn { stroke: var(--down); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
 .mock .wl div.on { background: var(--surface2); box-shadow: inset 2px 0 var(--accent); }
 .mock .wl small { color: var(--faint); }
 .mock .main { display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
 .mock .hd { padding: 10px 14px; display: flex; gap: 12px; align-items: baseline; border-bottom: 1px solid var(--line); font-size: .78rem; }
 .mock .hd b { font-size: .86rem; }
+.mock .live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: 600 .66rem var(--f-body); color: var(--up); text-transform: uppercase; letter-spacing: .08em; }
+.mock .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--up); animation: blink 1.6s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; transform: scale(.7); } }
 canvas.ch { width: 100%; height: 100%; min-height: 190px; display: block; }
 .mock .ord { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
 .mock .ord span { text-align: center; padding: 8px; border-radius: 6px; font: 700 .76rem var(--f-body); }
@@ -222,3 +228,69 @@ select option { color: #111; background: #fff; }
 .seg button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .sumln { display: flex; justify-content: space-between; gap: 12px; font-size: .92rem; }
 .sumln.tot { font: 700 1.6rem var(--f-display); letter-spacing: -.03em; border-top: 1px solid var(--line); padding-top: 16px; }
+
+/* ===== motion and graphics ===== */
+main.wrap { position: relative; }
+.herobg { position: absolute; top: -64px; left: 50%; width: 100vw; height: 760px; transform: translateX(-50%); z-index: -1; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(620px 340px at 74% 32%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 80% at 60% 28%, #000 25%, transparent 75%); mask-image: radial-gradient(ellipse 70% 80% at 60% 28%, #000 25%, transparent 75%); }
+@keyframes up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.hero > div:first-child > * { animation: up .8s var(--ease) both; }
+.hero > div:first-child > :nth-child(2) { animation-delay: .08s; } .hero > div:first-child > :nth-child(3) { animation-delay: .16s; }
+.hero > div:first-child > :nth-child(4) { animation-delay: .24s; } .hero > div:first-child > :nth-child(5) { animation-delay: .32s; }
+.mockwrap { position: relative; animation: up 1s .15s var(--ease) both; }
+.mockwrap .mock { transform: perspective(1400px) rotateY(-5deg) rotateX(2deg); transition: transform .6s var(--ease); box-shadow: 0 40px 80px -40px color-mix(in srgb, var(--accent) 35%, #000); }
+.mockwrap:hover .mock { transform: perspective(1400px) rotateY(0) rotateX(0); }
+.chip { position: absolute; display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--line2); font: 600 .74rem var(--f-body); box-shadow: 0 14px 30px -12px rgba(0,0,0,.6); }
+.chip.c1 { left: -22px; bottom: 64px; color: var(--up); animation: float 6s ease-in-out infinite; }
+.chip.c2 { right: -14px; top: 22px; flex-direction: column; align-items: stretch; gap: 7px; min-width: 132px; color: var(--muted); animation: float 7s -2s ease-in-out infinite; }
+.chip.c2 i { display: block; height: 5px; border-radius: 3px; background: var(--surface3); overflow: hidden; }
+.chip.c2 b { display: block; height: 100%; width: 38%; background: var(--up); border-radius: 3px; animation: fill 4s ease-in-out infinite alternate; }
+@keyframes float { 50% { transform: translateY(-8px); } }
+@keyframes fill { from { width: 18%; } to { width: 52%; } }
+@media (max-width: 960px) { .mockwrap .mock { transform: none; } .chip.c1 { left: 6px; } .chip.c2 { right: 6px; } }
+
+.ticker { overflow: hidden; border-block: 1px solid var(--line); margin-block: 36px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.ticker .run { display: flex; gap: 40px; width: max-content; padding-block: 16px; animation: tick 40s linear infinite; font: 600 .78rem var(--f-body); color: var(--faint); letter-spacing: .08em; }
+.ticker .run span { display: inline-flex; align-items: center; gap: 40px; white-space: nowrap; }
+.ticker .run span::after { content: ""; width: 5px; height: 5px; background: var(--accent); transform: rotate(45deg); opacity: .6; }
+.ticker:hover .run { animation-play-state: paused; }
+@keyframes tick { to { transform: translateX(-50%); } }
+
+/* reveal on scroll (JS adds .rv to blocks below the fold, then .in when they arrive) */
+.rv { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .7s var(--ease); transition-delay: var(--d, 0ms); }
+.rv.in { opacity: 1; transform: none; }
+
+/* cards: lift, border and cursor spotlight */
+.spot { position: relative; overflow: hidden; }
+.spot::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%); }
+.spot:hover::before { opacity: 1; }
+.spot > * { position: relative; }
+.step { transition: transform .3s var(--ease), border-color .3s; }
+.step:hover { transform: translateY(-4px); border-color: var(--line2); }
+.step .sic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); margin-bottom: 22px; transition: transform .4s var(--ease), background .3s; }
+.step:hover .sic { transform: rotate(-6deg) scale(1.08); background: var(--accent); color: var(--accent-fg); }
+.step::before { content: none; }
+.steps { position: relative; }
+.steps .num { position: absolute; top: 20px; right: 22px; font: 700 .8rem var(--f-mono); color: var(--faint); }
+.btn.primary { position: relative; overflow: hidden; }
+.btn.primary::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent); transform: skewX(-20deg); }
+.btn.primary:hover::after { left: 130%; transition: left .7s var(--ease); }
+.plan .price { transition: opacity .25s; }
+.plan.hot { box-shadow: 0 0 0 1px var(--accent) inset, 0 20px 50px -30px var(--accent); }
+.reward { position: relative; overflow: hidden; }
+.reward .curve { position: absolute; inset: auto 0 0 0; height: 55%; pointer-events: none; }
+.reward .curve path.l { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.reward .curve path.f { fill: url(#cg); opacity: 0; }
+.reward.in .curve path.l, .reward:not(.rv) .curve path.l { animation: draw 2.4s .3s var(--ease) forwards; }
+.reward.in .curve path.f, .reward:not(.rv) .curve path.f { animation: fade 1.2s 1.6s ease forwards; }
+@keyframes fade { to { opacity: 1; } }
+.cta-band { position: relative; overflow: hidden; }
+.cta-band::after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%); pointer-events: none; }
+header.top { transition: border-color .3s, background .3s; }
+@media (prefers-reduced-motion: reduce) { .ticker .run, .chip, .chip.c2 b, .mock .live i { animation: none; } .rv { opacity: 1; transform: none; } }
+html, body { overflow-x: clip; }
+.ticker { min-width: 0; max-width: 100%; contain: inline-size paint; }

@@ -21,13 +21,13 @@ export default function PlansSection({ plans, prices }: { plans: Plan[]; prices:
         {plans.map((p) => {
           const fee = prices.find((x) => x.plan_key === p.key && x.account_size === active);
           return (
-            <div className="glass plan" key={p.key}>
+            <div className="glass plan spot" key={p.key} data-reveal style={{ "--d": `${plans.indexOf(p) * 90}ms` } as React.CSSProperties}>
               <div>
                 <div className="tag"><h3>{p.name}</h3><span className="pill gold">{evaluationText(p)}</span></div>
                 <p className="sub">{PLAN_TAGLINES[p.key] ?? ""}</p>
               </div>
               <div>
-                <div className="price mono">{fee ? inr(fee.price_inr) : "—"}</div>
+                <div className="price mono" key={active} style={{ animation: "up .45s var(--ease) both" }}>{fee ? inr(fee.price_inr) : "—"}</div>
                 <p className="muted" style={{ fontSize: ".8rem", marginTop: 8 }}>One-time fee · {inr(active)} simulated account</p>
               </div>
               <Link className="btn primary" href={`/checkout?plan=${p.key}&size=${active}`}>Start {p.name}</Link>

@@ -1,4 +1,5 @@
 "use client";
+import Px from "./Px";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { instrumentKey, parseInstrumentKey, type InstrumentRef, type Side } from "@/lib/types";
@@ -228,7 +229,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           return (
             <button key={k} onClick={() => pickUnderlying(k)}>
               <small>{k}</small>
-              <b className="tr-mono">{px == null ? "—" : num(px)}</b>
+              <Px v={px} className="tr-mono" text={px == null ? "—" : num(px)} />
               <span className={"tr-mono " + (d == null ? "" : d >= 0 ? "tr-up" : "tr-down")}>{d == null || pv == null ? "" : `${d >= 0 ? "▲" : "▼"} ${Math.abs((d / pv) * 100).toFixed(2)}%`}</span>
             </button>
           );
@@ -264,7 +265,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   <div className="tr-wrow" aria-current={sel.underlying === w.k}>
                     <button className="main" onClick={() => pickUnderlying(w.k)}>
                       <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : "NSE · Cash"}</small></span>
-                      <span className="px"><b>{px == null ? "—" : num(px)}</b><small className={d == null ? "" : d >= 0 ? "tr-up" : "tr-down"}>{d == null || pv == null ? "—" : `${d >= 0 ? "+" : ""}${num(d)} (${((d / pv) * 100).toFixed(2)}%)`}</small></span>
+                      <span className="px"><Px v={px} text={px == null ? "—" : num(px)} className="pxv" /><small className={d == null ? "" : d >= 0 ? "tr-up" : "tr-down"}>{d == null || pv == null ? "—" : `${d >= 0 ? "+" : ""}${num(d)} (${((d / pv) * 100).toFixed(2)}%)`}</small></span>
                     </button>
                     <span className="acts">
                       <button className="b" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Buy" })); }} aria-label={`Buy ${w.k}`}>B</button>
@@ -346,7 +347,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                         <td>{p.side}</td>
                         <td className="tr-mono">{p.qty}</td>
                         <td className="tr-mono">{num(p.avg_price)}</td>
-                        <td className="tr-mono">{px == null ? "—" : num(px)}</td>
+                        <td className="tr-mono"><Px v={px ?? undefined} text={px == null ? "—" : num(px)} /></td>
                         <td className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</td>
                         <td><button className="tr-btn sm" disabled={account?.status !== "active"} onClick={() => closePosition(p.instrument)}>Exit</button></td>
                       </tr>

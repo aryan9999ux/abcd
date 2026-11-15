@@ -126,7 +126,7 @@
 .tr-wrow b { font-size: .86rem; font-weight: 650; }
 .tr-wrow small { font-size: .7rem; color: var(--muted); }
 .tr-wrow .px { text-align: right; justify-items: end; }
-.tr-wrow .px b { font: 600 .86rem var(--f-mono); font-variant-numeric: tabular-nums; }
+.tr-wrow .px b, .tr-wrow .px .pxv { font: 600 .86rem var(--f-mono); font-variant-numeric: tabular-nums; }
 .tr-wrow .px small { font: 500 .68rem var(--f-mono); }
 .tr-wrow .acts { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: none; grid-auto-flow: column; gap: 4px; background: var(--surface2); padding-left: 8px; }
 .tr-wrow:hover .acts, .tr-wrow:focus-within .acts { display: grid; }
@@ -247,3 +247,12 @@
 .tr-cbody > .tr-hint { padding: 8px 14px; border-top: 1px solid var(--line); background: var(--surface); }
 .tr .tr-chain th:nth-child(5) { text-align: left; }
 .tr .tr-chain th:nth-child(4) { text-align: center; }
+
+/* price flash and entrance motion */
+.fu { animation: flu .65s ease-out; }
+.fd { animation: fld .65s ease-out; }
+@keyframes flu { from { background: color-mix(in srgb, var(--up) 28%, transparent); } to { background: transparent; } }
+@keyframes fld { from { background: color-mix(in srgb, var(--down) 28%, transparent); } to { background: transparent; } }
+.tr-card, .tr-glass { animation: trin .5s var(--ease, ease) both; }
+@keyframes trin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fu, .fd, .tr-card, .tr-glass { animation: none; } }
