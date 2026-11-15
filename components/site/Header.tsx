@@ -2,6 +2,7 @@ import Link from "next/link";
 import { userClient } from "@/lib/supabase/server";
 import ThemeToggle from "./ThemeToggle";
 import MobileNav from "./MobileNav";
+import TabBar from "./TabBar";
 
 function initials(name: string | undefined, email: string | undefined) {
   const src = (name && name.trim()) || email || "?";
@@ -20,6 +21,7 @@ export default async function Header() {
   }
 
   return (
+    <>
     <header className="top">
       <div className="wrap">
         <div className="bar">
@@ -58,9 +60,11 @@ export default async function Header() {
             </>
           )}
           </div>
-          <MobileNav user={user} />
+          <MobileNav />
         </div>
       </div>
     </header>
+    <TabBar signedIn={!!user} />
+    </>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
+import TabBar from "@/components/site/TabBar";
 import { browserClient } from "@/lib/supabase/browser";
 
 interface Props {
@@ -76,6 +77,7 @@ export default function Shell({ active, accountId, slot, ticker, children }: Pro
           </div>
         </header>
         <main className="tr-main tr-view">{children}</main>
+        <TabBar signedIn />
       </div>
     </div>
   );
