@@ -1,5 +1,6 @@
 import { publicClient } from "@/lib/supabase/public";
 import Footer from "@/components/site/Footer";
+import RulesView, { type RulesPlan } from "@/components/site/RulesView";
 import { PLAN_RULES, type PlanRules } from "@/lib/rules";
 
 export const revalidate = 60;
@@ -33,32 +34,42 @@ function lines(r: PlanRules): [string, string][] {
   ];
 }
 
+const GROUPS: [string, string, string[]][] = [
+  ["Targets", "What you need to reach", ["Account type", "Profit target", "Profitable days"]],
+  ["Loss limits", "Hard limits that close the account", ["Daily loss limit", "Maximum drawdown"]],
+  ["Trading conduct", "How every trade must be placed", ["Stop loss", "Risk per trade", "One idea, one day", "Open positions", "Minimum hold", "Entry cutoff", "Trade size consistency", "Not allowed"]],
+  ["Rewards", "How and when you get paid", ["Reward requests", "Reward amount", "Fee refund"]],
+];
+
 export default async function Rules() {
-  const { data } = await publicClient().from("plans").select("key,name,rules,evaluation_phases").eq("active", true).order("evaluation_phases", { ascending: false });
-  const plans = (data ?? []).map((p) => ({ key: p.key as string, name: p.name as string, rules: (p.rules ?? PLAN_RULES[p.key as string]) as PlanRules | undefined })).filter((p) => p.rules);
+  const { data } = await publicClient().from("plans").select("key,name,rules,evaluation_phases").eq("active", true).order("evaluation_phases");
+  const plans: RulesPlan[] = (data ?? [])
+    .map((p) => ({ key: p.key as string, name: p.name as string, rules: (p.rules ?? PLAN_RULES[p.key as string]) as PlanRules | undefined }))
+    .filter((p) => p.rules)
+    .map((p) => {
+      const r = p.rules!;
+      const L = new Map(lines(r));
+      const funded = r.targetsPct.length === 0;
+      return {
+        key: p.key, name: p.name, version: r.version,
+        tiles: [
+          ["Daily loss limit", `${r.dailyLossPct}%`],
+          ["Max drawdown", `${r.drawdownPct}% ${r.drawdownType}`],
+          ["Profit target", funded ? "None" : r.targetsPct.map((x) => `${x}%`).join(" + ")],
+          ["Reward split", `${r.payout.splitPct}%`],
+        ] as [string, string][],
+        groups: GROUPS.map(([title, note, keys]) => ({ title, note, items: keys.filter((k) => L.has(k)).map((k) => [k, L.get(k)!] as [string, string]) })),
+      };
+    })
+    .sort((a, b) => ["1-step", "2-step", "instant"].findIndex((k) => a.key.includes(k.replace("-", ""))) - ["1-step", "2-step", "instant"].findIndex((k) => b.key.includes(k.replace("-", ""))));
   return (
     <>
       <main className="wrap" style={{ paddingBlock: "56px 80px" }}>
-        <span className="eyebrow">Rulebook</span>
-        <h1 style={{ fontSize: "clamp(2rem,5vw,3.2rem)", marginTop: 8 }}>The rules, in plain words</h1>
-        <p className="muted" style={{ marginTop: 12, maxWidth: 680 }}>
+        <h1 style={{ fontSize: "clamp(2.2rem,5vw,3.6rem)" }}>The rules, in plain words</h1>
+        <p className="muted" style={{ marginTop: 14, maxWidth: 680 }}>
           These limits are enforced automatically and shown live on your dashboard. Daily loss and drawdown use the starting balance. Risk per trade uses your current balance. All times are IST. Accounts use simulated capital and rewards are performance rewards under the Terms.
         </p>
-        <div style={{ display: "grid", gap: 22, marginTop: 32 }}>
-          {plans.map((p) => (
-            <section key={p.key} className="glass" style={{ padding: 24 }}>
-              <h2 style={{ fontSize: "1.5rem" }}>{p.name}</h2>
-              <p className="muted" style={{ fontSize: ".85rem", marginTop: 4 }}>Rules version {p.rules!.version}. Changes are announced in advance and do not apply to accounts already running.</p>
-              <dl style={{ display: "grid", gap: 0, marginTop: 14 }}>
-                {lines(p.rules!).map(([k, v]) => (
-                  <div key={k} style={{ display: "grid", gridTemplateColumns: "minmax(120px,200px) 1fr", gap: 16, padding: "12px 0", borderTop: "1px solid var(--line)" }}>
-                    <dt style={{ fontWeight: 600 }}>{k}</dt><dd className="muted" style={{ margin: 0 }}>{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ))}
-        </div>
+        <RulesView plans={plans} />
       </main>
       <Footer />
     </>

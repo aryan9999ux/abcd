@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { userClient } from "@/lib/supabase/server";
 import ThemeToggle from "./ThemeToggle";
+import MobileNav from "./MobileNav";
 
 function initials(name: string | undefined, email: string | undefined) {
   const src = (name && name.trim()) || email || "?";
@@ -40,6 +41,7 @@ export default async function Header() {
           </nav>
           <span className="sp" />
           <ThemeToggle />
+          <div className="acts">
           {user ? (
             <>
               <span className="avatar" title={user.email} aria-label={`Signed in as ${user.email}`}>
@@ -55,6 +57,8 @@ export default async function Header() {
               <Link className="btn primary sm" href="/signup">Start now</Link>
             </>
           )}
+          </div>
+          <MobileNav user={user} />
         </div>
       </div>
     </header>
