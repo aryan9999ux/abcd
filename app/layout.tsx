@@ -2,6 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import "@fontsource-variable/inter/index.css";
 import "@fontsource-variable/geist-mono/index.css";
+import "@fontsource-variable/bricolage-grotesque/index.css";
 
 
 export const metadata = {

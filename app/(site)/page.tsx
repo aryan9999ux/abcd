@@ -2,6 +2,8 @@ import Link from "next/link";
 import { publicClient } from "@/lib/supabase/public";
 import Footer from "@/components/site/Footer";
 import HeroPreview from "@/components/site/HeroPreview";
+import DayStrip from "@/components/site/DayStrip";
+import CompareTable from "@/components/site/CompareTable";
 import Motion from "@/components/site/Motion";
 import { CountUp } from "@/components/site/Num";
 import PlansSection from "@/components/site/PlansSection";
@@ -74,21 +76,82 @@ export default async function Home() {
         <div><b>Live</b><span>NSE / BSE prices</span></div>
       </div>
 
-      <section className="blk" id="how">
-        <div className="head" data-reveal><span className="eyebrow">How it works</span><h2>Four steps to your first reward</h2></div>
-        <div className="steps">
-          {[
-            ["Choose your plan", "Instant, 1-Step or 2-Step, on a ₹1 lakh to ₹10 lakh simulated account."],
-            ["Trade the terminal", "Watchlist, charts, option chain and orders on one screen, with your rules tracked live."],
-            ["Hit the targets", "Reach the profit target while staying inside the daily and overall loss limits."],
-            ["Receive rewards", `Earn ${split}% of the profit on a funded account, paid on the published schedule.`],
-          ].map(([t, d], i) => (
-            <div className="glass step spot" key={t} data-reveal style={{ "--d": `${i * 90}ms` } as React.CSSProperties}>
-              <span className="sic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{ICONS[i]}</svg></span>
-              <span className="num">0{i + 1}</span>
-              <h3>{t}</h3><p>{d}</p>
+      <section className="blk" id="terminal">
+        <div className="head" data-reveal>
+          <h2>One screen for the whole trade</h2>
+          <p>Watchlist, chart, option chain and order ticket sit together, and your limits are always in view.</p>
+        </div>
+        <div className="bento">
+          <article className="glass tile t-chain spot" data-reveal>
+            <h3>Real option chain</h3>
+            <p>Every strike with live premiums, open interest, implied volatility and delta worked out from the premium.</p>
+            <div className="mini-chain" aria-hidden>
+              {[62, 48, 36, 25, 17, 11, 7].map((w, i) => (
+                <div key={i} className={i === 3 ? "atm" : ""}>
+                  <span style={{ width: `${w}%` }} className="ce" />
+                  <em />
+                  <span style={{ width: `${[7, 11, 17, 25, 36, 48, 62][i]}%` }} className="pe" />
+                </div>
+              ))}
             </div>
-          ))}
+          </article>
+          <article className="glass tile t-risk spot" data-reveal style={{ "--d": "80ms" } as React.CSSProperties}>
+            <h3>Limits you can see</h3>
+            <p>Daily loss, drawdown and profit target update with every tick, so a breach never comes as a surprise.</p>
+            <div className="meters" aria-hidden>
+              <div><span>Daily loss</span><i><b style={{ "--w": "34%" } as React.CSSProperties} /></i></div>
+              <div><span>Drawdown</span><i><b style={{ "--w": "18%" } as React.CSSProperties} /></i></div>
+              <div><span>Profit target</span><i className="g"><b style={{ "--w": "62%" } as React.CSSProperties} /></i></div>
+            </div>
+          </article>
+          <article className="glass tile t-sl spot" data-reveal style={{ "--d": "160ms" } as React.CSSProperties}>
+            <h3>Stop loss on every order</h3>
+            <p>No stop loss, no order. It is the one rule that keeps accounts alive.</p>
+            <div className="ticket" aria-hidden><div><span>Quantity</span><b>1 lot</b></div><div className="hl"><span>Stop loss</span><b>Required</b></div></div>
+          </article>
+          <article className="glass tile t-real spot" data-reveal style={{ "--d": "80ms" } as React.CSSProperties}>
+            <h3>Only real prices</h3>
+            <p>Spot, futures and option premiums come straight from the exchange feed. Nothing is simulated, so fills match the market.</p>
+          </article>
+          <article className="glass tile t-multi spot" data-reveal style={{ "--d": "160ms" } as React.CSSProperties}>
+            <h3>Run several accounts</h3>
+            <p>Buy as many accounts as you like and switch between them in the terminal.</p>
+            <div className="stack" aria-hidden><i /><i /><i /></div>
+          </article>
+        </div>
+      </section>
+
+      <section className="blk" id="day">
+        <div className="head" data-reveal>
+          <h2>Your trading day, rule by rule</h2>
+          <p>The same clock applies to every plan. Knowing it up front is most of the evaluation.</p>
+        </div>
+        <DayStrip minHold={60} cutoff="3:15 PM" />
+      </section>
+
+      <section className="blk" id="how">
+        <div className="head" data-reveal>
+          <h2>From evaluation to reward</h2>
+          <p>Pick the path that suits you. Instant skips the evaluation and starts funded.</p>
+        </div>
+        <div className="path" data-reveal>
+          <div className="stage glass">
+            <h3>Evaluate</h3>
+            <p>Reach the profit target without crossing the daily or overall loss limit, and close enough profitable days.</p>
+            <ul><li>1-Step or 2-Step</li><li>Simulated ₹1L to ₹10L</li></ul>
+          </div>
+          <div className="link" aria-hidden><i /></div>
+          <div className="stage glass">
+            <h3>Get funded</h3>
+            <p>Trade the same rules with no target. Your closed profit builds towards the next reward cycle.</p>
+            <ul><li>Instant starts here</li><li>Stocks up to 5x</li></ul>
+          </div>
+          <div className="link" aria-hidden><i /></div>
+          <div className="stage glass hot">
+            <h3>Take your reward</h3>
+            <p>Request a reward every cycle once the checks pass. You keep {split}% of closed profit.</p>
+            <ul><li>{split}% to you</li><li>Fee returned on later rewards</li></ul>
+          </div>
         </div>
       </section>
 
@@ -99,6 +162,7 @@ export default async function Home() {
           <p>One fee covers your simulated account and the terminal. Sample values until launch.</p>
         </div>
         <PlansSection plans={orderedPlans} prices={prices} />
+        <div style={{ marginTop: 28 }} data-reveal><CompareTable plans={orderedPlans} prices={prices} /></div>
       </section>
 
       <section className="blk" id="rewards">
@@ -115,6 +179,20 @@ export default async function Home() {
             <p className="muted">Reward requests open on your dashboard once a funded account meets the payout checks. Timing and limits are set out in the Terms.</p>
           </div>
           <RewardCalc sizes={[...new Set(prices.map((p) => p.account_size))].sort((a, b) => a - b)} split={split} />
+        </div>
+      </section>
+
+      <section className="blk" id="fit">
+        <div className="head" data-reveal><h2>Is this for you?</h2><p>We would rather you know before you pay.</p></div>
+        <div className="split">
+          <div className="glass fit yes" data-reveal>
+            <h3>A good fit if you</h3>
+            <ul><li>trade Indian indices, stocks or options and use a stop loss anyway</li><li>want a fixed, known cost instead of risking your own capital</li><li>can work inside daily and overall loss limits</li></ul>
+          </div>
+          <div className="glass fit no" data-reveal style={{ "--d": "90ms" } as React.CSSProperties}>
+            <h3>Not a fit if you</h3>
+            <ul><li>expect a guaranteed reward. Most participants do not earn one</li><li>want to trade without a stop loss or hold through large swings</li><li>are looking for a broker or investment advice. We are neither</li></ul>
+          </div>
         </div>
       </section>
 
