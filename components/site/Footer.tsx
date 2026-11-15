@@ -2,10 +2,10 @@ export default function Footer() {
   return (
     <footer className="foot wrap">
       <div className="links">
-        <span>Terms of Service (to add)</span>
-        <span>Privacy Policy (to add)</span>
-        <span>Risk Disclosure (to add)</span>
-        <span>Refund Policy (to add)</span>
+        <span>Terms of Service</span>
+        <span>Privacy Policy</span>
+        <span>Risk Disclosure</span>
+        <span>Refund Policy</span>
       </div>
       <p>
         <b>Risk disclosure.</b> Apex Capital Funded offers simulated trading accounts for evaluation and education. It is not a

@@ -163,6 +163,7 @@ export interface KiteQuote {
   last_price?: number;
   oi?: number;
   volume?: number;
+  ohlc?: { close?: number };
   depth?: { buy?: { price: number; quantity: number }[]; sell?: { price: number; quantity: number }[] };
 }
 

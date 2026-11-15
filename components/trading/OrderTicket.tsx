@@ -50,12 +50,13 @@ export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, ava
   const set = (patch: Partial<TicketState>) => onChange({ ...state, ...patch });
 
   return (
-    <div className="tr-glass tr-card tr-ticket">
-      <h3>Order ticket</h3>
-      <div>
-        <div style={{ font: "600 .95rem var(--f-display)" }}>{nameOf(inst)}</div>
-        <div className="tr-muted tr-mono" style={{ fontSize: ".78rem" }}>LTP {ltp == null ? "—" : num(ltp)}</div>
+    <div className="tr-glass tr-ticket" data-side={state.side}>
+      <div className="tr-ohead">
+        <div><b>{state.side === "Buy" ? "BUY" : "SELL"}</b> <span>{nameOf(inst)}</span></div>
+        <div className="tr-mono">{ltp == null ? "—" : num(ltp)}</div>
       </div>
+      <div className="tr-obody">
+      <div className="tr-prod"><span>Intraday</span><span className="tr-muted">{fo ? "F&O · NRML margin" : `Cash · ${STOCK_LEVERAGE}× leverage`}</span></div>
       <div className="tr-segs two" role="group" aria-label="Side">
         {(["Buy", "Sell"] as Side[]).map((s) => (
           <button key={s} aria-pressed={state.side === s} onClick={() => set({ side: s })}>{s}</button>
@@ -97,6 +98,7 @@ export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, ava
         {busy ? "Placing…" : `${state.side} ${nameOf(inst)}`}
       </button>
       <p className={"tr-msg" + (message?.err ? " err" : "")} role="status">{disabledReason ?? message?.text ?? ""}</p>
+      </div>
     </div>
   );
 }

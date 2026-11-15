@@ -21,11 +21,11 @@ export default async function Header() {
   return (
     <header className="top">
       <div className="wrap">
-        <div className="bar glass">
+        <div className="bar">
           <Link className="brand" href="/" aria-label="Apex Capital Funded home">
             <svg viewBox="0 0 32 32" aria-hidden="true">
-              <path d="M16 2 28 9v14L16 30 4 23V9z" fill="none" stroke="var(--accent)" strokeWidth="2" />
-              <path d="M9 20 14 13l4 4 5-8" fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              <rect width="32" height="32" rx="8" fill="var(--accent)" />
+              <path d="M7 21 13 13l4 4 8-9" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Apex Capital Funded
           </Link>
@@ -52,7 +52,7 @@ export default async function Header() {
           ) : (
             <>
               <Link className="btn sm" href="/login">Log in</Link>
-              <Link className="btn primary sm" href="/signup">Get funded</Link>
+              <Link className="btn primary sm" href="/signup">Start now</Link>
             </>
           )}
         </div>

@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/engine/auth";
 import { run } from "@/lib/engine/http";
 import { ALL_SYMBOLS } from "@/lib/market/pricing";
 import { contractsReady } from "@/lib/market/instruments";
-import { feedName, getSpots } from "@/lib/market/server-feed";
+import { feedName, getPrevs, getSpots } from "@/lib/market/server-feed";
 import { kick } from "@/lib/engine/runtime";
 import { parseInstrumentKey, type QuotesResponse } from "@/lib/types";
 
@@ -31,10 +31,10 @@ export async function GET(req: Request) {
     return run(async () => {
       await requireUser();
       contracts = rawContracts.split(",").filter(validContract).slice(0, 40);
-      const body: QuotesResponse = { ts: Date.now(), source: feedName(), quotes: getSpots(symbols, contracts), ready: contractsReady() };
+      const body: QuotesResponse = { ts: Date.now(), source: feedName(), quotes: getSpots(symbols, contracts), prev: getPrevs([...symbols, ...contracts]), ready: contractsReady() };
       return body as unknown as Record<string, unknown>;
     });
   }
-  const body: QuotesResponse = { ts: Date.now(), source: feedName(), quotes: getSpots(symbols), ready: contractsReady() };
+  const body: QuotesResponse = { ts: Date.now(), source: feedName(), quotes: getSpots(symbols), prev: getPrevs(symbols), ready: contractsReady() };
   return Response.json(body, { headers: { "Cache-Control": "no-store" } });
 }

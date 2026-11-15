@@ -17,7 +17,7 @@ const STALE_MS = 15_000;
 const WANT_TTL_MS = 45_000;
 
 export interface Detail { ltp: number; bid?: number; ask?: number; oi?: number; vol?: number; ts: number }
-interface Feed { source: PriceSource; spots: Record<string, number>; stamps: Record<string, number>; detail: Map<string, Detail>; wants: Map<string, number>; ts: number; live: boolean }
+interface Feed { source: PriceSource; closes: Record<string, number>; spots: Record<string, number>; stamps: Record<string, number>; detail: Map<string, Detail>; wants: Map<string, number>; ts: number; live: boolean }
 const g = globalThis as unknown as { __propFeed?: Feed };
 
 /** Process-wide singleton. One upstream connection, many readers (required by Kite's connection limits). */
@@ -26,14 +26,15 @@ export function ensureFeed(): Feed {
   const source = createPriceSource();
   const live = source.name !== "demo";
   const now = Date.now();
-  const feed: Feed = { source, live, spots: live ? {} : { ...SEED }, stamps: {}, detail: new Map(), wants: new Map(), ts: now };
+  const feed: Feed = { source, closes: {}, live, spots: live ? {} : { ...SEED }, stamps: {}, detail: new Map(), wants: new Map(), ts: now };
   if (!live) for (const s of Object.keys(SEED)) feed.stamps[s] = now;
   g.__propFeed = feed;
-  const store = (t: { symbol: string; ltp: number; ts: number; bid?: number; ask?: number; oi?: number; vol?: number }) => {
+  const store = (t: { symbol: string; ltp: number; ts: number; bid?: number; ask?: number; oi?: number; vol?: number; close?: number }) => {
     if (!Number.isFinite(t.ltp) || t.ltp <= 0) return;
     feed.spots[t.symbol] = t.ltp; // contracts share the map, keyed by instrumentKey
     feed.stamps[t.symbol] = t.ts;
     feed.ts = t.ts;
+    if (t.close && t.close > 0) feed.closes[t.symbol] = t.close;
     if (t.symbol.includes("|")) feed.detail.set(t.symbol, { ltp: t.ltp, bid: t.bid, ask: t.ask, oi: t.oi, vol: t.vol, ts: t.ts });
   };
   source.subscribe(ALL_SYMBOLS, store, () => {
@@ -81,6 +82,14 @@ export function getSpots(symbols: string[], contracts: string[] = []): Record<st
   return out;
 }
 
+/** Previous session close for each key, from the exchange quote. Used for day change. */
+export function getPrevs(keys: string[]): Record<string, number> {
+  const f = ensureFeed();
+  const out: Record<string, number> = {};
+  for (const k of keys) if (f.closes[k] != null) out[k] = f.closes[k];
+  return out;
+}
+
 export function getDetail(key: string): Detail | undefined {
   const f = ensureFeed();
   const d = f.detail.get(key);
@@ -106,6 +115,7 @@ export async function ensurePrice(ref: InstrumentRef): Promise<number | undefine
       f.spots[t.symbol] = t.ltp;
       f.stamps[t.symbol] = t.ts;
       f.detail.set(t.symbol, { ltp: t.ltp, bid: t.bid, ask: t.ask, oi: t.oi, vol: t.vol, ts: t.ts });
+      if (t.close) f.closes[t.symbol] = t.close;
     }
   } catch { /* reported by the caller as "no price" */ }
   return getPrice(ref);

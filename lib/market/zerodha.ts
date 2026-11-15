@@ -20,7 +20,7 @@ export function toTick(symbol: string, q: KiteQuote, ts: number): Tick | null {
   let ltp = q.last_price ?? 0;
   if (!(ltp > 0) && bid && ask && bid > 0 && ask > 0) ltp = (bid + ask) / 2; // untraded contract: use the live market
   if (!(ltp > 0)) return null;
-  return { symbol, ltp, ts, bid: bid || undefined, ask: ask || undefined, oi: q.oi, vol: q.volume };
+  return { symbol, ltp, ts, bid: bid || undefined, ask: ask || undefined, oi: q.oi, vol: q.volume, close: q.ohlc?.close || undefined };
 }
 
 export class ZerodhaSource implements PriceSource {

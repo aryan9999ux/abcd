@@ -11,90 +11,64 @@ function rng(seed: number) {
   };
 }
 
-function sample() {
-  const r = rng(21);
-  const a = [100000];
-  for (let i = 1; i < 40; i++) a.push(a[i - 1] * (1 + (r() - 0.5) * 0.011 + 0.0012));
-  const k = 104200 / a[a.length - 1];
-  return a.map((v) => v * k);
-}
-
 const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-/** Illustrative equity curve. Sample data only, never presented as real results. */
+/** A drawing of the terminal for the home page. Shapes only: no prices, no results, never presented as real data. */
 export default function HeroPreview() {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
-    const data = sample();
     const draw = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const w = c.clientWidth, h = c.clientHeight;
       if (!w || !h) return;
-      c.width = w * dpr;
-      c.height = h * dpr;
+      c.width = w * dpr; c.height = h * dpr;
       const x = c.getContext("2d")!;
       x.setTransform(dpr, 0, 0, dpr, 0, 0);
       x.clearRect(0, 0, w, h);
-      const base = 100000;
-      let mn = Math.min(...data, base), mx = Math.max(...data, base);
-      const pad = (mx - mn) * 0.12;
-      mn -= pad; mx += pad;
-      const R = w - 54, T = 8, B = h - 8;
-      const sx = (i: number) => (R * i) / (data.length - 1);
-      const sy = (v: number) => B - ((B - T) * (v - mn)) / (mx - mn);
-      const col = css("--up"), mut = css("--muted"), line = css("--line");
-      x.font = "11px " + (css("--f-mono") || "monospace");
-      x.textBaseline = "middle";
-      for (let k = 0; k <= 3; k++) {
-        const v = mn + ((mx - mn) * k) / 3, y = sy(v);
-        x.strokeStyle = line; x.lineWidth = 1;
-        x.beginPath(); x.moveTo(0, y); x.lineTo(R, y); x.stroke();
-        x.fillStyle = mut; x.fillText("₹" + Math.round(v / 1000) + "k", R + 6, y);
+      const r = rng(7), n = 46, up = css("--up"), dn = css("--down"), line = css("--line");
+      for (let k = 1; k < 5; k++) { x.strokeStyle = line; x.beginPath(); x.moveTo(0, (h * k) / 5); x.lineTo(w, (h * k) / 5); x.stroke(); }
+      let p = 0.55;
+      const bars: [number, number, number, number][] = [];
+      for (let i = 0; i < n; i++) {
+        const o = p; p += (r() - 0.46) * 0.08; const cl = p;
+        bars.push([o, Math.max(o, cl) + r() * 0.03, Math.min(o, cl) - r() * 0.03, cl]);
       }
-      x.setLineDash([4, 4]); x.strokeStyle = mut;
-      x.beginPath(); x.moveTo(0, sy(base)); x.lineTo(R, sy(base)); x.stroke(); x.setLineDash([]);
-      const g = x.createLinearGradient(0, T, 0, B);
-      x.fillStyle = col;
-      x.beginPath();
-      data.forEach((v, i) => (i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v))));
-      x.strokeStyle = col; x.lineWidth = 2; x.lineJoin = "round"; x.stroke();
-      x.lineTo(sx(data.length - 1), B); x.lineTo(0, B); x.closePath();
-      g.addColorStop(0, "rgba(52,211,153,.28)"); g.addColorStop(1, "rgba(52,211,153,0)");
-      x.fillStyle = g; x.fill();
-      x.beginPath(); x.arc(sx(data.length - 1), sy(data[data.length - 1]), 4, 0, 7); x.fillStyle = col; x.fill();
+      const lo = Math.min(...bars.map((b) => b[2])), hi = Math.max(...bars.map((b) => b[1]));
+      const sy = (v: number) => h - 14 - ((h - 28) * (v - lo)) / (hi - lo);
+      const bw = (w - 16) / n;
+      bars.forEach(([o, hh, l, cl], i) => {
+        const col = cl >= o ? up : dn, cx = 8 + i * bw + bw / 2;
+        x.strokeStyle = col; x.fillStyle = col; x.lineWidth = 1;
+        x.beginPath(); x.moveTo(cx, sy(hh)); x.lineTo(cx, sy(l)); x.stroke();
+        x.fillRect(cx - bw * 0.3, Math.min(sy(o), sy(cl)), bw * 0.6, Math.max(1.5, Math.abs(sy(o) - sy(cl))));
+      });
     };
     draw();
     const ro = new ResizeObserver(draw);
     ro.observe(c);
     window.addEventListener("themechange", draw);
-    const mq = matchMedia("(prefers-color-scheme: light)");
-    mq.addEventListener("change", draw);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("themechange", draw);
-      mq.removeEventListener("change", draw);
-    };
+    return () => { ro.disconnect(); window.removeEventListener("themechange", draw); };
   }, []);
 
   return (
-    <div className="phone glass" aria-label="Sample account preview">
-      <div className="row">
-        <span className="pill gold">Sample account</span>
-        <span className="pill up mono">+4.2%</span>
+    <div className="mock" aria-label="Illustration of the trading terminal">
+      <div className="tb"><i /><i /><i /><span>Terminal</span></div>
+      <div className="body">
+        <div className="wl">
+          {["NIFTY", "BANKNIFTY", "SENSEX", "RELIANCE", "TCS", "HDFCBANK", "INFY", "SBIN"].map((s, i) => (
+            <div key={s} className={i === 0 ? "on" : ""}><b>{s}</b><small>{i < 3 ? "F&O" : "5×"}</small></div>
+          ))}
+        </div>
+        <div className="main">
+          <div className="hd"><b>NIFTY FUT</b><span className="muted">Chart · Option chain</span></div>
+          <canvas className="ch" ref={ref} />
+          <div className="ord"><span className="b">BUY</span><span className="s">SELL</span></div>
+        </div>
       </div>
-      <div>
-        <small className="muted">Equity · 2-Step ₹1L (illustration)</small>
-        <div className="big mono">₹1,04,200</div>
-      </div>
-      <canvas className="ch" ref={ref} />
-      <div className="mini">
-        <div><small>Target</small><b>8%</b></div>
-        <div><small>Max loss</small><b>8%</b></div>
-        <div><small>Split</small><b className="up">80 / 20</b></div>
-      </div>
+      <div className="note">Illustration of the layout. Not live data or results.</div>
     </div>
   );
 }

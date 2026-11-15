@@ -5,6 +5,8 @@ import { POLL_QUOTES_MS } from "./constants";
 
 export interface QuotesState {
   quotes: Record<string, number>;
+  /** Previous session close per key. */
+  prev: Record<string, number>;
   source: string | null;
   ts: number | null;
   error: string | null;
@@ -14,7 +16,7 @@ export interface QuotesState {
 
 /** Polls GET /api/quotes (server-authoritative prices). Pauses while the tab is hidden. */
 export function useQuotes(symbols: string[], instruments: string[] = []): QuotesState {
-  const [state, setState] = useState<QuotesState>({ quotes: {}, source: null, ts: null, error: null, ready: false });
+  const [state, setState] = useState<QuotesState>({ quotes: {}, prev: {}, source: null, ts: null, error: null, ready: false });
   const key = symbols.join(",");
   const ikey = [...new Set(instruments)].sort().join(",");
   const failures = useRef(0);
@@ -35,7 +37,7 @@ export function useQuotes(symbols: string[], instruments: string[] = []): Quotes
         if (!res.ok) throw new Error("bad status");
         const json = (await res.json()) as QuotesResponse;
         failures.current = 0;
-        if (!stop) setState({ quotes: json.quotes, source: json.source, ts: json.ts, error: null, ready: !!json.ready });
+        if (!stop) setState({ quotes: json.quotes, prev: json.prev ?? {}, source: json.source, ts: json.ts, error: null, ready: !!json.ready });
       } catch (e) {
         if (stop || (e instanceof DOMException && e.name === "AbortError")) return;
         failures.current += 1;

@@ -10,11 +10,12 @@ interface Props {
   active: "dashboard" | "terminal";
   accountId?: string | null;
   slot?: ReactNode;
+  ticker?: ReactNode;
   children: ReactNode;
 }
 
 /** Frame for the signed-in workspace: glass top bar, navigation, theme toggle, sign out. */
-export default function Shell({ active, accountId, slot, children }: Props) {
+export default function Shell({ active, accountId, slot, ticker, children }: Props) {
   const router = useRouter();
   useEffect(() => {
     try {
@@ -44,15 +45,15 @@ export default function Shell({ active, accountId, slot, children }: Props) {
   }
 
   return (
-    <div className="tr">
+    <div className={"tr" + (active === "terminal" ? " tr-app" : "")}>
       <div style={{ paddingInline: "max(20px, env(safe-area-inset-left, 0px))" }}>
         <header className="tr-head">
           <div className="tr-main" style={{ paddingBlock: 0 }}>
             <div className="tr-top tr-glass">
               <Link className="tr-brand" href="/">
                 <svg viewBox="0 0 32 32" aria-hidden="true">
-                  <path d="M16 2 28 9v14L16 30 4 23V9z" fill="none" stroke="var(--accent)" strokeWidth="2" />
-                  <path d="M9 20 14 13l4 4 5-8" fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect width="32" height="32" rx="8" fill="var(--accent)" />
+                  <path d="M7 21 13 13l4 4 8-9" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span>Apex Capital Funded</span>
               </Link>
@@ -61,6 +62,7 @@ export default function Shell({ active, accountId, slot, children }: Props) {
                 <Link href={accountId ? `/terminal?account=${accountId}` : "/terminal"} aria-current={active === "terminal" ? "page" : undefined}>Terminal</Link>
                 <Link href="/checkout">New account</Link>
               </nav>
+              {ticker}
               {slot}
               <span className="tr-sp" />
               <button className="tr-iconbtn" onClick={toggleTheme} aria-label="Switch between light and dark theme" title="Theme">

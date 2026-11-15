@@ -49,6 +49,8 @@ export interface QuotesResponse {
   source: string; // "demo" (local development only) | "zerodha"
   /** Spot by underlying, plus contract prices by instrumentKey when asked for. All from the exchange feed. */
   quotes: Record<string, number>;
+  /** Previous session close for the same keys, for day change. */
+  prev?: Record<string, number>;
   /** True once the exchange contract list (lot sizes, expiries) is loaded. */
   ready?: boolean;
 }

@@ -3,7 +3,7 @@
  * so the data vendor (Zerodha today, a licensed vendor later) can be swapped in one place.
  * `symbol` is an underlying ("NIFTY") or an instrumentKey ("NIFTY|CE|24500|2026-11-17").
  */
-export type Tick = { symbol: string; ltp: number; ts: number; bid?: number; ask?: number; oi?: number; vol?: number };
+export type Tick = { symbol: string; ltp: number; ts: number; bid?: number; ask?: number; oi?: number; vol?: number; close?: number };
 
 export interface PriceSource {
   readonly name: string;
