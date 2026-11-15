@@ -77,29 +77,48 @@ export default function HeroPreview() {
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
+  const NAMES = ["NIFTY 50", "BANK NIFTY", "SENSEX", "FINNIFTY", "RELIANCE", "HDFC BANK", "TCS", "INFOSYS"];
   return (
-    <div className="mockwrap">
-      <div className="mock" aria-label="Illustration of the trading terminal">
-        <div className="tb"><i /><i /><i /><span>Terminal</span></div>
-        <div className="body">
-          <div className="wl">
-            {["NIFTY", "BANKNIFTY", "SENSEX", "RELIANCE", "TCS", "HDFCBANK"].map((s, i) => (
-              <div key={s} className={i === 0 ? "on" : ""}>
-                <b>{s}</b>
-                <svg viewBox="0 0 40 18" width="34" height="14" aria-hidden="true"><path d={SPARK[i]} pathLength="1" style={{ animationDelay: `${0.5 + i * 0.12}s` }} className={i % 3 === 1 ? "dn" : ""} /></svg>
+    <div className="ht" aria-label="Illustration of the trading terminal">
+      <div className="ht-frame" onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`); e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`); }}>
+        <div className="ht-bar">
+          <div className="dots"><i /><i /><i /></div>
+          <div className="idx">{["NIFTY 50", "BANK NIFTY", "SENSEX"].map((n) => <span key={n}>{n}<em /></span>)}</div>
+          <span className="live"><i />Live</span>
+        </div>
+        <div className="ht-body">
+          <div className="ht-wl p1">
+            {NAMES.map((n, i) => (
+              <div key={n} className={i === 0 ? "on" : ""}>
+                <b>{n}</b>
+                <svg viewBox="0 0 40 18" width="36" height="14" aria-hidden="true"><path d={SPARK[i % SPARK.length]} pathLength="1" style={{ animationDelay: `${0.9 + i * 0.1}s` }} className={i % 3 === 1 ? "dn" : ""} /></svg>
               </div>
             ))}
           </div>
-          <div className="main">
-            <div className="hd"><b>NIFTY FUT</b><span className="muted">Chart · Option chain</span><span className="live"><i />Live</span></div>
+          <div className="ht-main p2">
+            <div className="tools"><b>NIFTY FUT</b><span className="chips"><u className="on">1m</u><u>5m</u><u>15m</u><u>1D</u></span><span className="tabs"><u className="on">Chart</u><u>Option chain</u></span></div>
             <canvas className="ch" ref={ref} />
-            <div className="ord"><span className="b">BUY</span><span className="s">SELL</span></div>
+          </div>
+          <div className="ht-side p3">
+            <div className="chain">
+              <span className="cap">Option chain</span>
+              {[62, 48, 36, 25, 17, 11, 7].map((w, i) => (
+                <div key={i} className={i === 3 ? "atm" : ""}><i className="ce" style={{ width: `${w}%` }} /><em /><i className="pe" style={{ width: `${[7, 11, 17, 25, 36, 48, 62][i]}%` }} /></div>
+              ))}
+            </div>
+            <div className="tkt">
+              <div className="sl"><span>Stop loss</span><b>Required</b></div>
+              <div className="bs"><span className="b">Buy</span><span className="s">Sell</span></div>
+            </div>
           </div>
         </div>
-        <div className="note">Illustration of the layout. Not live data or results.</div>
+        <div className="ht-foot p4">
+          {[["Daily loss", "34%", ""], ["Drawdown", "18%", ""], ["Profit target", "62%", "g"]].map(([l, w, c]) => (
+            <div key={l}><span>{l}</span><i className={c}><b style={{ "--w": w } as React.CSSProperties} /></i></div>
+          ))}
+        </div>
       </div>
-      <div className="chip c1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 5 5 9-10" /></svg>Stop loss on every trade</div>
-      <div className="chip c2"><span>Daily loss limit</span><i><b /></i></div>
+      <p className="ht-note">Illustration of the terminal layout. Not live data or results.</p>
     </div>
   );
 }

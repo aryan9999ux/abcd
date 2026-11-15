@@ -44,31 +44,19 @@ export default async function Home() {
     <main className="wrap view">
       <Motion />
       <div className="herobg" aria-hidden />
-      <section className="hero">
-        <div>
-          <span className="eyebrow">Simulated funded accounts</span>
-          <h1>Trade India&apos;s markets with a funded account.</h1>
-          <p className="lead">Pass the evaluation on live NSE and BSE prices, then keep {split}% of your rewards.</p>
-          <div className="cta">
-            <Link className="btn primary lg" href="/signup">{cheapest != null ? `Start from ${inr(cheapest)}` : "Get started"}</Link>
-            <Link className="btn lg" href="/#plans">See plans</Link>
-          </div>
-          <p className="note">
-            Accounts are simulated and run on our own terminal. We are not a broker and do not give investment advice. Most participants do not earn rewards. Read the Risk Disclosure before you buy.
-          </p>
+      <section className="hero hero-x">
+        <a className="pill-link" href="#plans">Instant, 1-Step and 2-Step accounts <span aria-hidden>›</span></a>
+        <h1>Trade India&apos;s markets{" "}<br />with a funded account.</h1>
+        <p className="lead">Pass the evaluation on live NSE and BSE prices, then keep {split}% of your rewards.</p>
+        <div className="cta">
+          <Link className="btn primary lg" href="/signup">{cheapest != null ? `Start from ${inr(cheapest)}` : "Get started"}</Link>
+          <Link className="btn lg" href="/#terminal">See the terminal</Link>
         </div>
         <HeroPreview />
+        <p className="note">
+          Accounts are simulated and run on our own terminal. We are not a broker and do not give investment advice. Most participants do not earn rewards. Read the Risk Disclosure before you buy.
+        </p>
       </section>
-
-      <div className="ticker" aria-hidden>
-        <div className="run">
-          {[0, 1].map((k) => (
-            <div key={k} style={{ display: "flex", gap: 40 }}>
-              {["NIFTY 50", "BANK NIFTY", "SENSEX", "FINNIFTY", "OPTION CHAIN", "STOP LOSS ON EVERY TRADE", "5X ON STOCKS", "LIVE NSE / BSE PRICES", "RELIANCE", "HDFC BANK", "TCS", "INFOSYS"].map((t) => <span key={t}>{t}</span>)}
-            </div>
-          ))}
-        </div>
-      </div>
 
       <div className="facts three" data-reveal>
         <div><b>₹1L – ₹10L</b><span>Simulated account sizes</span></div>
