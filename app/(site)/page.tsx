@@ -3,7 +3,6 @@ import { publicClient } from "@/lib/supabase/public";
 import Footer from "@/components/site/Footer";
 import HeroPreview from "@/components/site/HeroPreview";
 import PlansSection from "@/components/site/PlansSection";
-import CompareTable from "@/components/site/CompareTable";
 import RewardCalc from "@/components/site/RewardCalc";
 import type { Plan, PlanPrice } from "@/components/site/types";
 import { inr } from "@/components/site/format";
@@ -17,15 +16,6 @@ const FAQ: [string, string][] = [
   ["What happens if I breach a limit?", "The account closes at the breach and you can start a new one. Limits are shown live on your dashboard and terminal."],
   ["Can I run more than one account?", "Yes. Buy as many accounts as you like from your dashboard and switch between them in the terminal."],
 ];
-
-const EDGE: [string, string, string][] = [
-  ["◎", "Live NSE and BSE prices", "Spot, futures and option premiums come straight from the exchange feed. Fills happen at those prices during market hours."],
-  ["▤", "A published rulebook", "Every limit, payout gate and fee rule is on one page, generated from the same settings the engine enforces."],
-  ["◧", "Risk meters on every screen", "Daily loss, drawdown floor, open positions and profitable days update live, so no rule ever surprises you."],
-  ["✓", "A stop loss on every trade", "Orders without a stop loss are blocked. It keeps risk visible before you click, and keeps accounts alive longer."],
-];
-
-const TICKER = ["NIFTY 50", "BANK NIFTY", "SENSEX", "RELIANCE", "TCS", "HDFC BANK", "INFOSYS", "SBI", "OPTIONS CHAIN", "FUTURES", "INTRADAY 5×", "STOP LOSS ON EVERY TRADE"];
 
 export default async function Home() {
   const db = publicClient();
@@ -43,11 +33,9 @@ export default async function Home() {
     <main className="wrap view">
       <section className="hero">
         <div>
-          <span className="pill gold">Simulated funded accounts · NSE &amp; BSE</span>
-          <h1>Trade Nifty, Bank Nifty and stocks. <span className="hl">Keep {split}%</span> of your rewards.</h1>
-          <p className="lead">
-            Pick an account size, trade a professional F&amp;O terminal on live exchange prices, hit the target inside clear rules, and earn rewards on a funded account.
-          </p>
+          <span className="eyebrow">Simulated funded accounts</span>
+          <h1>Trade India&apos;s markets with a funded account.</h1>
+          <p className="lead">Pass the evaluation on live NSE and BSE prices, then keep {split}% of your rewards.</p>
           <div className="cta">
             <Link className="btn primary lg" href="/signup">{cheapest != null ? `Start from ${inr(cheapest)}` : "Get started"}</Link>
             <Link className="btn lg" href="/#plans">See plans</Link>
@@ -59,19 +47,14 @@ export default async function Home() {
         <HeroPreview />
       </section>
 
-      <div className="facts">
+      <div className="facts three">
         <div><b>₹1L – ₹10L</b><span>Simulated account sizes</span></div>
         <div><b>{split}%</b><span>Reward split</span></div>
         <div><b>Live</b><span>NSE / BSE prices</span></div>
-        <div><b>3 plans</b><span>Instant, 1-Step, 2-Step</span></div>
-      </div>
-
-      <div className="ticker" aria-hidden="true">
-        <div className="run">{[...TICKER, ...TICKER].map((t, i) => <span key={i}>{t}</span>)}</div>
       </div>
 
       <section className="blk" id="how">
-        <div className="head"><span className="eyebrow">How it works</span><h2>From sign-up to rewards in four steps</h2></div>
+        <div className="head"><span className="eyebrow">How it works</span><h2>Four steps to your first reward</h2></div>
         <div className="steps">
           {[
             ["Choose your plan", "Instant, 1-Step or 2-Step, on a ₹1 lakh to ₹10 lakh simulated account."],
@@ -87,15 +70,10 @@ export default async function Home() {
       <section className="blk" id="plans">
         <div className="head">
           <span className="eyebrow">Plans</span>
-          <h2>Choose your account size</h2>
-          <p>One platform fee covers your simulated account and terminal access. Fees and rules shown are sample values until launch.</p>
+          <h2>Choose your account</h2>
+          <p>One fee covers your simulated account and the terminal. Sample values until launch.</p>
         </div>
         <PlansSection plans={orderedPlans} prices={prices} />
-      </section>
-
-      <section className="blk">
-        <div className="head"><span className="eyebrow">Compare</span><h2>Every plan at a glance</h2></div>
-        <CompareTable plans={orderedPlans} prices={prices} />
       </section>
 
       <section className="blk" id="rewards">
@@ -110,17 +88,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="blk">
-        <div className="head"><span className="eyebrow">Why traders pick us</span><h2>Built to be checked, not just believed</h2></div>
-        <div className="trust">
-          {EDGE.map(([i, t, d]) => (
-            <div className="glass" key={t}><span className="ic" aria-hidden="true">{i}</span><h3>{t}</h3><p>{d}</p></div>
-          ))}
-        </div>
-      </section>
-
       <section className="blk" id="faq">
-        <div className="head"><span className="eyebrow">FAQ</span><h2>Straight answers</h2></div>
+        <div className="head"><span className="eyebrow">FAQ</span><h2>Before you buy</h2></div>
         <div className="glass" style={{ padding: "6px 24px" }}>
           {FAQ.map(([q, a]) => (
             <details key={q}><summary>{q}</summary><p>{a}</p></details>
