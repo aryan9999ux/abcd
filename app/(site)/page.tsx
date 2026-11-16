@@ -7,6 +7,8 @@ import HeroPreview from "@/components/site/HeroPreview";
 import Motion from "@/components/site/Motion";
 import GoldCard from "@/components/lux/GoldCard";
 import Tiers from "@/components/lux/Tiers";
+import Earn from "@/components/lux/Earn";
+import StickyCta from "@/components/lux/StickyCta";
 import Countdown from "@/components/lux/Countdown";
 import type { Plan, PlanPrice } from "@/components/site/types";
 import { inr, sizeLabel } from "@/components/site/format";
@@ -19,6 +21,9 @@ const FAQ: [string, string][] = [
   ["Where do the prices come from?", "Every price is a live NSE or BSE price, for stocks, futures and options. Your trades are filled at those prices."],
   ["When do I get paid?", "Once your funded account meets the payout conditions in the Terms, you can ask for a payout from your dashboard. You keep 80% of the profit."],
   ["What happens if I breach a limit?", "That account is closed. You only lose the fee you paid, and you can start a new account any time."],
+  ["Can I trade options and futures?", "Yes. You can trade stocks, futures and options on live NSE and BSE prices, including Nifty and Bank Nifty."],
+  ["Do I get my fee back?", "Your fee is returned with your rewards once you are funded and get paid, as set out in the Terms."],
+  ["Can I have more than one account?", "Yes. You can run several accounts and switch between them in one click from your dashboard."],
   ["Is Apex Capital Funded a broker?", "No. We do not place orders on any exchange and we do not hold your shares. The Terms explain exactly what we offer."],
 ];
 const TAPE = ["NIFTY 50", "BANK NIFTY", "SENSEX", "FINNIFTY", "RELIANCE", "HDFC BANK", "TCS", "INFOSYS", "ICICI BANK", "SBIN", "OPTION CHAIN", "FUTURES", "STOCKS AT 5X"];
@@ -74,24 +79,32 @@ export default async function Home() {
         </div>
       </div>
 
+      <section className="blk" id="why">
+        <div className="lx-head" data-reveal><h2>Why traders pick us</h2><p>Three simple things. That is it.</p></div>
+        <div className="lx-why" data-reveal>
+          <div><b className="big">{inr(cheapest)}</b><h3>Is all you can lose</h3><p>Pay one small fee. If a trade goes wrong, your own savings are never touched.</p></div>
+          <div><b className="big">{sizeLabel(topSize)}</b><h3>To trade with</h3><p>Trade an account many times bigger than the money you have saved.</p></div>
+          <div><b className="big">{split}%</b><h3>Of profit is yours</h3><p>You keep most of what you make. We take only {100 - split}%.</p></div>
+        </div>
+      </section>
+
       <section className="blk" id="edge">
         <div className="lx-head" data-reveal>
-          <h2>Same trade. {mult}× the profit.</h2>
-          <p>Make 2% in a month on your own {sizeLabel(ownCap)} and you earn {inr(alone)}. Make the same 2% on a {sizeLabel(topSize)} account and you take home {inr(funded)}. Same skill, bigger account.</p>
+          <h2>See what you could take home</h2>
+          <p>Pick an account size and a monthly profit. Same skill, bigger account, bigger payout.</p>
         </div>
-        <div className="lx-bars" data-reveal>
-          <div className="row">
-            <span>Your own {sizeLabel(ownCap)}</span>
-            <div className="bar"><i style={{ "--w": `${100 / mult}%` } as React.CSSProperties} /></div>
-            <b>{inr(alone)}</b>
-          </div>
-          <div className="row win">
-            <span>{sizeLabel(topSize)} funded</span>
-            <div className="bar"><i style={{ "--w": "100%" } as React.CSSProperties} /></div>
-            <b>{inr(funded)}</b>
-          </div>
-          <p className="muted">This is an example for a 2% month with your {split}% share. It is not a promise of profit.</p>
-        </div>
+        <div data-reveal><Earn sizes={prices.length ? Array.from(new Set(prices.map((p) => p.account_size))).sort((x, y) => x - y) : [100000, 500000, 1000000]} split={split} ownCap={ownCap} /></div>
+      </section>
+
+      <section className="blk" id="for">
+        <div className="lx-head" data-reveal><h2>Made for traders like you</h2></div>
+        <ul className="lx-for" data-reveal>
+          <li>You trade Nifty or Bank Nifty and you know your setup works.</li>
+          <li>Your capital is small, so your profits are small too.</li>
+          <li>You do not want to risk your savings just to grow.</li>
+          <li>You want a real chance to trade a {sizeLabel(topSize)} account.</li>
+        </ul>
+        <div className="lx-mid" data-reveal><Link className="btn primary lg" href="/signup">Get my account</Link><span className="muted">Start from {inr(cheapest)}</span></div>
       </section>
 
       <section className="blk" id="terminal">
@@ -106,6 +119,17 @@ export default async function Home() {
             </ul>
           </div>
           <div className="deskvis" data-reveal><HeroPreview /></div>
+        </div>
+      </section>
+
+      <section className="blk" id="compare">
+        <div className="lx-head" data-reveal><h2>Your money or ours?</h2></div>
+        <div className="lx-vs" data-reveal>
+          <div className="vs-h"><span /><span>Trading alone</span><span className="hi">With us</span></div>
+          <div className="vs-r"><span className="vs-k">Money at risk</span><span className="vs-a">Your own savings</span><span className="vs-b">Only the fee</span></div>
+          <div className="vs-r"><span className="vs-k">Size you trade</span><span className="vs-a">What you saved</span><span className="vs-b">Up to {sizeLabel(topSize)}</span></div>
+          <div className="vs-r"><span className="vs-k">Profit you keep</span><span className="vs-a">100% of a small profit</span><span className="vs-b">{split}% of a big profit</span></div>
+          <div className="vs-r"><span className="vs-k">To get started</span><span className="vs-a">Your full capital</span><span className="vs-b">From {inr(cheapest)}</span></div>
         </div>
       </section>
 
@@ -143,6 +167,7 @@ export default async function Home() {
         <p className="muted">Read the rules in simple words on the <Link href="/rules">rules page</Link>. Our Terms and Risk Disclosure apply.</p>
       </section>
 
+      <StickyCta label={`Get my account · from ${inr(cheapest)}`} />
       <Footer />
     </main>
   );
