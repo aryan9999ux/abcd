@@ -107,7 +107,7 @@ export default function HeroPreview() {
               ))}
             </div>
             <div className="tkt">
-              <div className="sl"><span>Stop loss</span><b>Required</b></div>
+              <div className="sl"><span>Risk guard</span><b>On</b></div>
               <div className="bs"><span className="b">Buy</span><span className="s">Sell</span></div>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function HeroPreview() {
           ))}
         </div>
       </div>
-      <p className="ht-note">Illustration of the terminal layout. Not live data or results.</p>
+      <p className="ht-note">Terminal preview — layout illustration</p>
     </div>
   );
 }

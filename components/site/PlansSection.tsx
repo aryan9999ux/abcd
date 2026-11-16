@@ -23,12 +23,12 @@ export default function PlansSection({ plans, prices }: { plans: Plan[]; prices:
           return (
             <div className="glass plan spot" key={p.key} data-reveal style={{ "--d": `${plans.indexOf(p) * 90}ms` } as React.CSSProperties}>
               <div>
-                <div className="tag"><h3>{p.name}</h3><span className="pill gold">{evaluationText(p)}</span></div>
+                <div className="tag"><h3>{p.name}</h3><span className="pill gold">{p.evaluation_phases === 0 ? "Funded day one" : evaluationText(p)}</span></div>
                 <p className="sub">{PLAN_TAGLINES[p.key] ?? ""}</p>
               </div>
               <div>
                 <div className="price mono" key={active} style={{ animation: "up .45s var(--ease) both" }}>{fee ? inr(fee.price_inr) : "—"}</div>
-                <p className="muted" style={{ fontSize: ".8rem", marginTop: 8 }}>One-time fee · {inr(active)} simulated account</p>
+                <p className="muted" style={{ fontSize: ".8rem", marginTop: 8 }}>One-time fee · {inr(active)} account</p>
               </div>
               <Link className="btn primary" href={`/checkout?plan=${p.key}&size=${active}`}>Start {p.name}</Link>
               <ul className="rules">
