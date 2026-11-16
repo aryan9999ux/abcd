@@ -273,13 +273,3 @@ body:has(.lux) .btn.primary { background: linear-gradient(135deg, #a47bff, #7c4d
   .lx-chain { padding: 16px; } .ch-h, .ch-r { grid-template-columns: 1fr 56px 1fr; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .ch-r i { animation: none; } }
-
-/* ---- section separation: bands + fading divider ---- */
-.blk { position: relative; padding-block: clamp(80px, 10vw, 132px); }
-.blk::after { content: ""; position: absolute; top: 0; left: 50%; width: 100vw; margin-left: -50vw; height: 80px; pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(183,156,255,.5) 50%, transparent) top / 100% 1px no-repeat, radial-gradient(34% 100% at 50% 0, rgba(139,92,246,.2), transparent 80%); }
-.blk.band::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1; pointer-events: none;
-  background: linear-gradient(180deg, rgba(139,92,246,.09), rgba(99,66,220,.035)); }
-.blk.band.strong::before { background: linear-gradient(180deg, rgba(139,92,246,.2), rgba(99,66,220,.07)); }
-.blk.band.strong::after { background: linear-gradient(90deg, transparent, rgba(205,188,255,.75) 50%, transparent) top / 100% 1px no-repeat, radial-gradient(40% 100% at 50% 0, rgba(139,92,246,.32), transparent 80%); }
-@media (max-width: 860px) { .blk { padding-block: 72px; } .blk::after { height: 56px; } }

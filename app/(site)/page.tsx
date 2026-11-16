@@ -90,7 +90,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="blk band" id="edge">
+      <section className="blk" id="edge">
         <div className="lx-head" data-reveal>
           <h2>See what you could take home</h2>
           <p>Pick an account size and a monthly profit. Same skill, bigger account, bigger payout.</p>
@@ -98,7 +98,7 @@ export default async function Home() {
         <div data-reveal><Earn sizes={prices.length ? Array.from(new Set(prices.map((p) => p.account_size))).sort((x, y) => x - y) : [100000, 500000, 1000000]} split={split} ownCap={ownCap} /></div>
       </section>
 
-      <section className="blk band strong" id="plans">
+      <section className="blk" id="plans">
         <div className="lx-head" data-reveal>
           <h2>Choose your account</h2>
           <p>One fee. No monthly charges, no hidden costs. Pick a size and the prices update.</p>
@@ -117,7 +117,7 @@ export default async function Home() {
         <div className="lx-mid" data-reveal><Link className="btn primary lg" href="/signup">Get my account</Link><span className="muted">Start from {inr(cheapest)}</span></div>
       </section>
 
-      <section className="blk band" id="terminal">
+      <section className="blk" id="terminal">
         <div className="desk">
           <div className="lx-head left" data-reveal>
             <h2>A trading screen made for big accounts</h2>
@@ -155,7 +155,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="blk band" id="how">
+      <section className="blk" id="how">
         <div className="lx-head" data-reveal>
           <h2>How you get paid</h2>
           <p>Instant accounts skip step 1 and start funded.</p>
