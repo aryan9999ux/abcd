@@ -6,7 +6,6 @@ import Footer from "@/components/site/Footer";
 import HeroPreview from "@/components/site/HeroPreview";
 import Motion from "@/components/site/Motion";
 import GoldCard from "@/components/lux/GoldCard";
-import Scrub from "@/components/lux/Scrub";
 import Tiers from "@/components/lux/Tiers";
 import Countdown from "@/components/lux/Countdown";
 import type { Plan, PlanPrice } from "@/components/site/types";
@@ -66,14 +65,6 @@ export default async function Home() {
           <div className="c c1"><GoldCard tier="silver" size={sizeLabel(topSize / 2)} name="2-Step" num="2028" /></div>
           <div className="c c2"><GoldCard tier="night" size={sizeLabel(topSize)} name="Instant" num="2027" /></div>
           <div className="c c3"><GoldCard tier="violet" size={sizeLabel(topSize)} name="1-Step" num="2026" /></div>
-          <div className="gw gw1">
-            <svg viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="22" r="17" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="5" /><circle cx="22" cy="22" r="17" fill="none" stroke="#c4b0ff" strokeWidth="5" strokeLinecap="round" strokeDasharray={`${split * 1.068} 107`} transform="rotate(-90 22 22)" /></svg>
-            <div><small>Your share</small><b>{split}% of profit</b></div>
-          </div>
-          <div className="gw gw2">
-            <span className="gi"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5 10 17.5 19 7" /></svg></span>
-            <div><small>One-time fee</small><b>From {inr(cheapest)}</b></div>
-          </div>
         </div>
       </section>
 
@@ -82,8 +73,6 @@ export default async function Home() {
           {[0, 1].map((k) => (<div key={k}>{TAPE.map((t) => <span key={t}>{t}</span>)}</div>))}
         </div>
       </div>
-
-      <Scrub fee={inr(cheapest)} top={sizeLabel(topSize)} split={split} />
 
       <section className="blk" id="edge">
         <div className="lx-head" data-reveal>

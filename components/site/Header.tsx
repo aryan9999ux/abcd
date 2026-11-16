@@ -30,7 +30,7 @@ export default async function Header() {
               <rect width="32" height="32" rx="8" fill="var(--accent)" />
               <path d="M7 21 13 13l4 4 8-9" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Apex Capital Funded
+            <span className="brand-name">Apex Capital Funded</span>
           </Link>
           <nav className="links" aria-label="Primary">
             <Link href="/#plans">Plans</Link>

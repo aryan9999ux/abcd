@@ -162,43 +162,27 @@ body:has(.lux) .btn.primary { background: linear-gradient(135deg, #a47bff, #7c4d
 .lx-road .hi .n { color: #fff; }
 .lx-copy h1 { background: linear-gradient(180deg, #ffffff 40%, #cdbcff); -webkit-background-clip: text; background-clip: text; color: transparent; animation: up .9s .08s var(--ease) both; }
 
-/* ---- liquid glass (iOS-style material) ---- */
+/* ---- clean glass: only big surfaces, no small boxes ---- */
 .lx-fan::before { content: ""; position: absolute; inset: -6% -8%; z-index: -1; pointer-events: none; filter: blur(8px);
-  background: radial-gradient(38% 42% at 28% 30%, rgba(124,77,255,.55), transparent 70%), radial-gradient(34% 38% at 78% 68%, rgba(67,56,202,.5), transparent 70%), radial-gradient(22% 26% at 70% 18%, rgba(217,70,239,.28), transparent 70%); }
-.gw, .lx-pill, .lx-bars .row, .lx-tier, .lx-sizes, .lx-faq details { position: relative;
-  background: linear-gradient(160deg, rgba(255,255,255,.11), rgba(255,255,255,.035) 55%, rgba(255,255,255,.07));
-  border: 1px solid rgba(255,255,255,.12); -webkit-backdrop-filter: blur(26px) saturate(190%); backdrop-filter: blur(26px) saturate(190%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), inset 0 -1px 0 rgba(255,255,255,.05), inset 0 0 22px rgba(255,255,255,.035), 0 24px 50px -24px rgba(0,0,0,.65); }
-.gw { position: absolute; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px; border-radius: 26px; animation: bob 8s ease-in-out infinite; }
-.gw small { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; } .gw b { font-size: 1.05rem; font-weight: 750; letter-spacing: -.02em; }
-.gw .gi { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #a47bff, #6d3df0); box-shadow: inset 0 1px 0 rgba(255,255,255,.45); }
-.gw1 { left: -2%; top: 8%; animation-delay: -1s; } .gw2 { right: 0; bottom: 0; animation-delay: -3.5s; }
-.lx-faq { border-top: 0; display: grid; gap: 12px; } .lx-faq details { border-radius: 22px; padding: 2px 22px; border-bottom: 1px solid rgba(255,255,255,.12); }
+  background: radial-gradient(38% 42% at 28% 30%, rgba(124,77,255,.5), transparent 70%), radial-gradient(34% 38% at 78% 68%, rgba(67,56,202,.45), transparent 70%); }
+.lx-pill { background: none; border: 0; padding: 0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; font-size: .9rem; }
+.lx-bars .row, .lx-tier { background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.03) 60%); border: 1px solid rgba(255,255,255,.11); -webkit-backdrop-filter: blur(26px) saturate(190%); backdrop-filter: blur(26px) saturate(190%); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 24px 50px -26px rgba(0,0,0,.65); }
 .lx-bars .row { border-radius: 24px; } .lx-tier { border-radius: 32px; }
-.lx-sizes { box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
-/* hero headline */
-.lx-copy h1 { font: 700 clamp(2.5rem, 4.5vw, 4.1rem)/1.08 var(--serif); letter-spacing: -.028em; text-wrap: balance; background: none; color: var(--fg); -webkit-background-clip: border-box; background-clip: border-box; margin-top: 22px; }
+.lx-copy h1 { font: 700 clamp(2.5rem, 4.5vw, 4.1rem)/1.08 var(--serif); letter-spacing: -.028em; text-wrap: balance; background: none; color: var(--fg); margin-top: 22px; }
 .lx-copy h1 span { display: block; }
 .lx-copy h1 .soft { background: linear-gradient(100deg, #d9ccff, #a98bff 55%, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @media (min-width: 861px) { .lx-hero { grid-template-columns: 1.1fr .9fr; } }
-@media (max-width: 860px) { .gw1 { left: 2%; top: 2%; } .gw2 { right: 2%; bottom: 4%; } .gw { padding: 9px 14px 9px 9px; border-radius: 22px; } .lx-copy h1 { font-size: clamp(2.2rem, 9vw, 3rem); } }
-@media (prefers-reduced-motion: reduce) { .gw { animation: none; } }
-
-/* ---- phone concept: wallet stack ---- */
+.blk { padding-block: clamp(64px, 9vw, 120px); }
+.lx-faq details { border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; border-bottom: 1px solid var(--line2); padding: 2px 0; }
+.lx-faq { border-top: 1px solid var(--line2); display: block; }
 @media (max-width: 860px) {
-  .lx-hero { padding-block: 28px 0; gap: 26px; }
+  .lx-hero { padding-block: 24px 0; gap: 28px; }
+  .lx-copy h1 { font-size: clamp(2.3rem, 9.4vw, 3.2rem); }
   .lx-cta { flex-direction: column; width: 100%; max-width: 360px; gap: 10px; } .lx-cta .btn { width: 100%; justify-content: center; }
-  .lx-trust { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-top: 0; padding-top: 0; margin-top: 26px; width: 100%; max-width: 360px; text-align: left; }
-  .lx-trust li { padding: 12px 14px; border-radius: 18px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); font-size: .8rem; line-height: 1.3; }
-  .lx-trust li:last-child { grid-column: 1 / -1; } .lx-trust b { display: block; font-size: 1.15rem; margin: 0 0 2px; }
-  .lx-fan { height: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 360px; margin-inline: auto; padding: 6px 0 4px; perspective: none; }
-  .lx-fan::before { inset: -10% -14%; }
-  .lx-fan .c { position: relative; left: auto; top: auto; grid-column: 1 / -1; width: 100%; animation: none; transform: scale(var(--s, 1)); transform-origin: 50% 100%; margin-top: -118px; }
+  .lx-trust { display: flex; flex-direction: column; gap: 8px; border-top: 0; padding-top: 0; margin-top: 26px; align-items: center; }
+  .lx-fan { height: auto; display: block; width: 100%; max-width: 360px; margin-inline: auto; perspective: none; padding-bottom: 8px; }
+  .lx-fan .c { position: relative; left: auto; top: auto; width: 100%; animation: none; transform: scale(var(--s, 1)); transform-origin: 50% 100%; margin-top: -118px; }
   .lx-fan .c1 { --s: .88; margin-top: 0; } .lx-fan .c2 { --s: .94; } .lx-fan .c3 { --s: 1; }
   .lx-fan:hover .c1, .lx-fan:hover .c3 { transform: scale(var(--s, 1)); }
-  .lx-fan .c .gc { animation: none; box-shadow: 0 -10px 30px -14px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.12) inset; }
-  .lx-fan .c3 { margin-bottom: 8px; }
-  .gw { position: relative; inset: auto; animation: none; width: 100%; padding: 12px 14px; border-radius: 22px; }
-  .gw1, .gw2 { left: auto; right: auto; top: auto; bottom: auto; }
-  .gw b { font-size: .95rem; white-space: nowrap; }
+  .lx-fan .c .gc { animation: none; }
 }
