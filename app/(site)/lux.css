@@ -233,3 +233,43 @@ body:has(.lux) .btn.primary { background: linear-gradient(135deg, #a47bff, #7c4d
   .stk { display: flex; justify-content: center; align-items: center; position: fixed; z-index: 55; left: 50%; width: min(420px, calc(100vw - 28px)); bottom: calc(92px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 24px); opacity: 0; pointer-events: none; padding: 15px 20px; border-radius: 999px; font-weight: 750; font-size: 1rem; color: #fff; text-decoration: none; background: linear-gradient(135deg, #a47bff, #7c4dff 50%, #6236e8); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 14px 34px -10px rgba(124,77,255,.8); transition: opacity .3s, transform .4s var(--ease); }
   .stk.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 }
+
+/* ---- standard website type sizes ---- */
+.lx-prev { margin-top: 8px; }
+.lx-hero { padding-block: clamp(56px, 7vw, 88px) 40px; }
+.lx-copy h1 { font-size: clamp(2.2rem, 4vw, 3.5rem); line-height: 1.1; letter-spacing: -.03em; }
+.lx-copy .lead { font-size: clamp(1rem, 1.2vw, 1.125rem); }
+.lx-pill { font-size: .85rem; } .lx-cta .btn.lg { padding: 13px 24px; font-size: 1rem; }
+.lx-trust { font-size: .9rem; } .lx-trust b { font-size: .95rem; }
+.lx-head { margin-bottom: 28px; } .lx-head h2 { font-size: clamp(1.7rem, 3vw, 2.4rem); line-height: 1.15; letter-spacing: -.03em; } .lx-head p { font-size: 1rem; }
+.lx-final h2 { font-size: clamp(1.9rem, 3.8vw, 2.9rem); }
+.lx-why .big { font-size: clamp(2.2rem, 4vw, 3rem); } .lx-why h3 { font-size: 1.15rem; } .lx-why p { font-size: .98rem; }
+.lx-why > div { padding-top: 26px; }
+.earn-out b { font-size: clamp(2.4rem, 5vw, 3.4rem); } .earn-r { font-size: 1rem; } .earn-r b { font-size: 1.1rem; }
+.lx-for li { font-size: clamp(1.02rem, 1.4vw, 1.18rem); padding-block: 20px; } .lx-for li::before { top: 22px; }
+.vs-a { font-size: 1rem; } .vs-b { font-size: clamp(1.05rem, 1.5vw, 1.25rem); } .vs-k, .vs-h span { font-size: .95rem; }
+.lx-bars .row b { font-size: 1.2rem; } .lx-faq summary { font-size: 1.05rem; padding-block: 18px; } .lx-road h3 { font-size: 1.1rem; }
+.lx-price { font-size: 2.2rem; } .lx-mid { font-size: 1rem; }
+.lx-list b { font-size: 1.02rem; }
+/* option chain graphic */
+.lx-chain { padding: 22px; border-radius: 24px; background: linear-gradient(160deg, rgba(255,255,255,.08), rgba(255,255,255,.025)); border: 1px solid rgba(255,255,255,.1); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); display: grid; gap: 8px; }
+.ch-h, .ch-r { display: grid; grid-template-columns: 1fr 72px 1fr; align-items: center; gap: 12px; }
+.ch-h { font-size: .78rem; color: var(--faint); font-weight: 700; } .ch-h span:first-child { text-align: right; } .ch-h span:nth-child(2) { text-align: center; }
+.ch-r b { text-align: center; font-size: .85rem; font-variant-numeric: tabular-nums; color: var(--muted); }
+.ch-r.atm b { color: var(--fg); }
+.ch-r .ce, .ch-r .pe { height: 14px; display: flex; } .ch-r .ce { justify-content: flex-end; }
+.ch-r i { display: block; height: 100%; border-radius: 4px; transform-origin: right; animation: grow 1.2s var(--ease) both; }
+.ch-r .pe i { transform-origin: left; }
+.ch-r .ce i { background: linear-gradient(90deg, rgba(74,222,128,.2), #4ade80); } .ch-r .pe i { background: linear-gradient(90deg, #f87171, rgba(248,113,113,.2)); }
+.ch-r.atm { padding-block: 4px; } .ch-r.atm .ce, .ch-r.atm .pe { height: 18px; }
+.lx-chain small { margin-top: 6px; color: var(--faint); font-size: .72rem; text-align: center; }
+@keyframes grow { from { transform: scaleX(0); } }
+@media (max-width: 860px) {
+  .lx-hero { padding-block: 36px 8px; gap: 30px; }
+  .lx-copy h1 { font-size: clamp(2rem, 8.6vw, 2.45rem); }
+  .lx-copy .lead { font-size: 1rem; }
+  .lx-head h2 { font-size: 1.65rem; } .lx-why .big { font-size: 2.4rem; }
+  .lx-cta .btn.lg { padding: 14px 24px; }
+  .lx-chain { padding: 16px; } .ch-h, .ch-r { grid-template-columns: 1fr 56px 1fr; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .ch-r i { animation: none; } }

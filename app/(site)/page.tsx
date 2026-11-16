@@ -79,6 +79,8 @@ export default async function Home() {
         </div>
       </div>
 
+      <section className="lx-prev" data-reveal><HeroPreview /></section>
+
       <section className="blk" id="why">
         <div className="lx-head" data-reveal><h2>Why traders pick us</h2><p>Three simple things. That is it.</p></div>
         <div className="lx-why" data-reveal>
@@ -118,7 +120,19 @@ export default async function Home() {
               <li><b>More than one account</b><span>Run several accounts and switch between them in one click.</span></li>
             </ul>
           </div>
-          <div className="deskvis" data-reveal><HeroPreview /></div>
+          <div className="deskvis" data-reveal aria-hidden>
+            <div className="lx-chain">
+              <div className="ch-h"><span>Calls</span><span>Strike</span><span>Puts</span></div>
+              {[62, 48, 36, 25, 17, 11, 7].map((w, i) => (
+                <div key={i} className={`ch-r${i === 3 ? " atm" : ""}`}>
+                  <span className="ce"><i style={{ width: `${w}%` }} /></span>
+                  <b>{24000 + (i - 3) * 100}</b>
+                  <span className="pe"><i style={{ width: `${[7, 11, 17, 25, 36, 48, 62][i]}%` }} /></span>
+                </div>
+              ))}
+              <small>Option chain preview. Layout illustration.</small>
+            </div>
+          </div>
         </div>
       </section>
 
