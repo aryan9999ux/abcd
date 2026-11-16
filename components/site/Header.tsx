@@ -35,7 +35,7 @@ export default async function Header() {
           <nav className="links" aria-label="Primary">
             <Link href="/#plans">Plans</Link>
             <Link href="/#how">How it works</Link>
-            <Link href="/#rewards">Rewards</Link>
+            <Link href="/#edge">Earnings</Link>
             <Link href="/rules">Rules</Link>
             <Link href="/#faq">FAQ</Link>
             {user && <Link href="/dashboard">Dashboard</Link>}
