@@ -1,7 +1,7 @@
 "use client";
 import { useRef } from "react";
 
-export type Tier = "black" | "gold" | "titanium";
+export type Tier = "night" | "violet" | "silver";
 
 /** A funded account drawn as a metal card. Tilts toward the cursor and catches light. */
 export default function GoldCard({ tier, size, name, num = "2026", className = "", tilt = true }: { tier: Tier; size: string; name: string; num?: string; className?: string; tilt?: boolean }) {

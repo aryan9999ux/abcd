@@ -23,15 +23,15 @@ export default function Scrub({ fee, top, split }: { fee: string; top: string; s
     return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); };
   }, []);
   const beats = [
-    { c: 0.16, k: "You pay", big: fee, sub: "One time. That is the whole risk." },
-    { c: 0.5, k: "You command", big: top, sub: "of buying power on live NSE and BSE prices." },
-    { c: 0.84, k: "You keep", big: `${split}%`, sub: "of every profit. Your fee comes back with rewards." },
+    { c: 0.16, k: "You pay", big: fee, sub: "One time. This is the most you can lose." },
+    { c: 0.5, k: "You trade", big: top, sub: "of trading money, on live NSE and BSE prices." },
+    { c: 0.84, k: "You keep", big: `${split}%`, sub: "of every profit you make." },
   ];
   return (
     <div className="scrub" ref={ref}>
       <div className="stage">
         <div className="sc-card" style={{ transform: `translate(-50%, -50%) scale(${1.0 + p * 0.7}) rotate(${-10 + p * 10}deg)`, opacity: 0.1 + Math.sin(p * Math.PI) * 0.22 }} aria-hidden>
-          <GoldCard tier="gold" size={top} name="Funded" tilt={false} />
+          <GoldCard tier="violet" size={top} name="Funded" tilt={false} />
         </div>
         {beats.map((b, i) => {
           const o = clamp(1 - Math.abs(p - b.c) / 0.2, 0, 1);

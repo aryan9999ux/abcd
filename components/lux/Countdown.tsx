@@ -27,7 +27,7 @@ export default function Countdown({ className = "" }: { className?: string }) {
   return (
     <span className={className}>
       <i className={`cd-dot${s.open ? " on" : ""}`} />
-      {s.open ? "Market is live" : "Next open"} <b className="cd-t">{clock}</b>{s.open ? " to close" : ""}
+      {s.open ? "Market is open · closes in" : "Market opens in"} <b className="cd-t">{clock}</b>
     </span>
   );
 }

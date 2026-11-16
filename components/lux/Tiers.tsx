@@ -3,11 +3,11 @@ import Link from "next/link";
 import { useState } from "react";
 import GoldCard, { type Tier } from "./GoldCard";
 import { Tween } from "../site/Num";
-import { daysText, evaluationText, inr, sizeLabel, splitText, targetText } from "../site/format";
+import { daysText, inr, sizeLabel, splitText, targetText } from "../site/format";
 import type { Plan, PlanPrice } from "../site/types";
 
-const TIER = (p: Plan): Tier => (p.evaluation_phases === 0 ? "black" : p.evaluation_phases === 1 ? "gold" : "titanium");
-const TAG = (p: Plan) => (p.evaluation_phases === 0 ? "Funded from day one" : p.evaluation_phases === 1 ? "One phase to funded" : "Lowest fee");
+const TIER = (p: Plan): Tier => (p.evaluation_phases === 0 ? "night" : p.evaluation_phases === 1 ? "violet" : "silver");
+const TAG = (p: Plan) => (p.evaluation_phases === 0 ? "Start funded, no test" : p.evaluation_phases === 1 ? "1 test to get funded" : "Lowest fee, 2 tests");
 
 /** Plans as cards. Pick a size once, every card follows. */
 export default function Tiers({ plans, prices }: { plans: Plan[]; prices: PlanPrice[] }) {
@@ -27,15 +27,15 @@ export default function Tiers({ plans, prices }: { plans: Plan[]; prices: PlanPr
             <article key={p.key} className={`lx-tier${p.evaluation_phases === 1 ? " mid" : ""}`} data-reveal style={{ "--d": `${i * 100}ms` } as React.CSSProperties}>
               <GoldCard tier={TIER(p)} size={sizeLabel(active)} name={p.name} num={String(2026 + i)} />
               <div className="lx-info">
-                <span className="lx-tag">{TAG(p)} · {evaluationText(p)}</span>
+                <span className="lx-tag">{TAG(p)}</span>
                 <div className="lx-price"><Tween value={fee ? fee.price_inr : 0} format={inr} /><small>one-time</small></div>
                 <Link className="btn primary lg" href={`/checkout?plan=${p.key}&size=${active}`}>Get {p.name}</Link>
                 <ul>
-                  <li><span>Profit target</span><b>{targetText(p)}</b></li>
-                  <li><span>Daily loss limit</span><b>{Number(p.max_daily_loss_pct)}%</b></li>
-                  <li><span>Overall loss limit</span><b>{Number(p.max_overall_loss_pct)}%</b></li>
-                  <li><span>Profitable days</span><b>{daysText(p)}</b></li>
-                  <li><span>Your split</span><b className="gold">{splitText(p)}</b></li>
+                  <li><span>Profit goal</span><b>{targetText(p)}</b></li>
+                  <li><span>Max loss per day</span><b>{Number(p.max_daily_loss_pct)}%</b></li>
+                  <li><span>Max total loss</span><b>{Number(p.max_overall_loss_pct)}%</b></li>
+                  <li><span>Profit days needed</span><b>{daysText(p)}</b></li>
+                  <li><span>Your share</span><b className="hi">{splitText(p)}</b></li>
                 </ul>
               </div>
             </article>
