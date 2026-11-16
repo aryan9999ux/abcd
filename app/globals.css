@@ -1,30 +1,31 @@
-/* Design system: flat, high-contrast, dense. Inter for text, Geist Mono for figures, one green brand colour, 8px radii.
+/* Design system: violet glass on deep indigo. Plus Jakarta Sans for headings, Inter for text, Geist Mono for figures.
    Tokens are shared with the trading workspace (components/trading/trading.css). Dark by default, with a light variant. */
 :root {
-  --bg: #05070d; --bg2: #090d16; --surface: #0c111c; --surface2: #121826; --surface3: #1a2233;
-  --fg: #e9edf5; --muted: #8e98ae; --faint: #5d677d; --line: #1b2336; --line2: #29344d;
+  --bg: #0a0714; --bg2: #0e0a1c; --surface: #130e24; --surface2: #1a1430; --surface3: #251c42;
+  --fg: #f4f1ff; --muted: #a8a2c4; --faint: #706a93; --line: #241c3d; --line2: #372c5c;
   --glass: var(--surface); --glass-strong: var(--surface2); --glass-b: var(--line2);
-  --accent: #3df5b0; --accent-fg: #021a10; --accent-soft: rgba(61,245,176,.12);
+  --accent: #8b5cf6; --accent-fg: #ffffff; --accent-soft: rgba(139,92,246,.16); --hi: #b79cff;
   --blue: #5b9bff; --blue-soft: rgba(91,155,255,.14);
-  --ink-btn: #3df5b0; --ink-btn-fg: #021a10;
-  --up: #1fcc85; --down: #f4585d; --warn: #f2b53a; --saffron: #f5a524;
+  --ink-btn: #8b5cf6; --ink-btn-fg: #ffffff;
+  --up: #2fd68f; --down: #f4585d; --warn: #f2b53a; --saffron: #f5a524;
   --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 40px -24px rgba(0,0,0,.8);
-  --f-display: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-display: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: var(--f-display);
   --f-body: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --r: 10px; --ease: cubic-bezier(.2,.7,.2,1); --spring: cubic-bezier(.34,1.56,.64,1);
-  --g1: rgba(255,255,255,.075); --g2: rgba(255,255,255,.03); --gb: rgba(255,255,255,.1); --gh: rgba(255,255,255,.16); --gs: 0 28px 60px -32px rgba(0,0,0,.8); --glow: .55;
+  --g1: rgba(196,176,255,.08); --g2: rgba(196,176,255,.035); --gb: rgba(196,176,255,.13); --gh: rgba(220,205,255,.2); --gs: 0 28px 60px -32px rgba(0,0,0,.8); --glow: .4;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #eaeef6; --bg2: #eef1f7; --surface: #ffffff; --surface2: #f4f6fb; --surface3: #e9edf5;
-  --fg: #0b1322; --muted: #566177; --faint: #96a0b4; --line: #e1e6ef; --line2: #cdd5e3;
-  --accent: #0aa86c; --accent-fg: #ffffff; --accent-soft: rgba(10,168,108,.1);
-  --g1: rgba(255,255,255,.72); --g2: rgba(255,255,255,.5); --gb: rgba(255,255,255,.9); --gh: rgba(255,255,255,1); --gs: 0 24px 50px -30px rgba(30,50,90,.35); --glow: .35;
+  --bg: #f1eefb; --bg2: #f5f2fc; --surface: #ffffff; --surface2: #f6f3fd; --surface3: #ebe6f9;
+  --fg: #150f2b; --muted: #5d5680; --faint: #9a94b8; --line: #e4def5; --line2: #d3cae9;
+  --accent: #6d3df0; --accent-fg: #ffffff; --accent-soft: rgba(109,61,240,.1); --hi: #6d3df0;
+  --g1: rgba(255,255,255,.72); --g2: rgba(255,255,255,.5); --gb: rgba(255,255,255,.9); --gh: rgba(255,255,255,1); --gs: 0 24px 50px -30px rgba(60,40,120,.35); --glow: .3;
   --blue: #2563eb; --blue-soft: rgba(37,99,235,.1);
-  --ink-btn: #0fb374; --ink-btn-fg: #ffffff;
+  --ink-btn: #6d3df0; --ink-btn-fg: #ffffff;
   --up: #0e9f6e; --down: #d8353d; --warn: #b7791f;
-  --shadow: 0 1px 2px rgba(15,25,50,.06), 0 14px 30px -20px rgba(15,25,50,.25);
+  --shadow: 0 1px 2px rgba(40,25,90,.06), 0 14px 30px -20px rgba(40,25,90,.25);
   color-scheme: light;
 }
 
@@ -66,7 +67,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn:hover { background: var(--surface2); border-color: var(--faint); }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.primary { background: var(--ink-btn); color: var(--ink-btn-fg); border-color: transparent; box-shadow: 0 0 0 0 var(--accent-soft); }
+.btn.primary { background: linear-gradient(135deg, #a47bff, #7c4dff 50%, #6236e8); color: #fff; border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 10px 28px -12px rgba(124,77,255,.7); }
 .btn.primary:hover { filter: brightness(1.08); box-shadow: 0 6px 22px -8px var(--accent); }
 .btn.sm { padding: 7px 14px; font-size: .84rem; }
 .btn.lg { padding: 12px 22px; font-size: .95rem; }
@@ -486,9 +487,9 @@ h1 { font-weight: 700; letter-spacing: -.035em; }
 /* ===== liquid glass ===== */
 .ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .ambient i { position: absolute; border-radius: 50%; filter: blur(90px); opacity: var(--glow); will-change: transform; translate: 0 calc(var(--sy, 0) * -.12px); }
-.ambient i:nth-child(1) { width: 640px; height: 640px; left: -140px; top: -120px; background: radial-gradient(circle, #1fdca0, transparent 68%); animation: drift1 34s ease-in-out infinite alternate; }
-.ambient i:nth-child(2) { width: 720px; height: 720px; right: -200px; top: 120px; background: radial-gradient(circle, #1a8f9e, transparent 68%); animation: drift2 42s ease-in-out infinite alternate; }
-.ambient i:nth-child(3) { width: 560px; height: 560px; left: 30%; bottom: -260px; background: radial-gradient(circle, #3a3fd0, transparent 68%); opacity: calc(var(--glow) * .7); animation: drift3 38s ease-in-out infinite alternate; }
+.ambient i:nth-child(1) { width: 640px; height: 640px; left: -140px; top: -120px; background: radial-gradient(circle, #7c3aed, transparent 68%); animation: drift1 34s ease-in-out infinite alternate; }
+.ambient i:nth-child(2) { width: 720px; height: 720px; right: -200px; top: 120px; background: radial-gradient(circle, #4338ca, transparent 68%); animation: drift2 42s ease-in-out infinite alternate; }
+.ambient i:nth-child(3) { width: 560px; height: 560px; left: 30%; bottom: -260px; background: radial-gradient(circle, #2a1a5e, transparent 68%); opacity: calc(var(--glow) * .7); animation: drift3 38s ease-in-out infinite alternate; }
 @keyframes drift1 { to { transform: translate(180px, 140px) scale(1.15); } }
 @keyframes drift2 { to { transform: translate(-200px, 90px) scale(.9); } }
 @keyframes drift3 { to { transform: translate(120px, -120px) scale(1.1); } }
@@ -546,9 +547,9 @@ h1 { font-weight: 700; letter-spacing: -.045em; } h2 { font-weight: 650; letter-
 /* desktop header: centred glass nav */
 @media (min-width: 861px) {
   header.top .bar { position: relative; }
-  header.top nav.links { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 2px; padding: 4px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+  header.top nav.links { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 6px; }
   header.top nav.links a { padding: 7px 15px; font-size: .9rem; font-weight: 600; transition: background .25s, color .2s; }
-  header.top nav.links a:hover { background: rgba(255,255,255,.1); color: var(--fg); }
+  header.top nav.links a:hover { background: none; color: var(--fg); }
   header.top .bar { background: linear-gradient(160deg, rgba(255,255,255,.1), rgba(255,255,255,.03)); border-color: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 18px 44px -22px rgba(0,0,0,.7); }
 }
 

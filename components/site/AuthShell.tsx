@@ -15,7 +15,7 @@ export default function AuthShell({ signup, children }: { signup: boolean; child
           <h2>{signup ? "Trade with a funded account." : "Welcome back to your desk."}</h2>
           <ul>
             <li>Live NSE and BSE prices on every instrument</li>
-            <li>Stop loss on every order, limits always visible</li>
+            <li>Your loss limits are always in view</li>
             <li>Keep 80% of closed profit on a funded account</li>
           </ul>
         </div>

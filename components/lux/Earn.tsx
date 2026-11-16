@@ -6,7 +6,7 @@ import { Tween } from "../site/Num";
 /** Illustration only: shows the split arithmetic for a chosen account size and monthly return. */
 export default function Earn({ sizes, split, ownCap }: { sizes: number[]; split: number; ownCap: number }) {
   const [size, setSize] = useState(sizes[sizes.length - 1] ?? 1000000);
-  const [pct, setPct] = useState(4);
+  const [pct, setPct] = useState(6);
   const mine = (size * pct * split) / 10000;
   const alone = (ownCap * pct) / 100;
   const ratio = Math.max(0.04, Math.min(1, alone / Math.max(mine, 1)));

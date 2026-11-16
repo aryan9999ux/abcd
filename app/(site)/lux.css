@@ -1,15 +1,4 @@
-/* Marketing home: black, ivory and champagne gold. Scoped by body:has(.lux) so the app keeps its own palette. */
-body:has(.lux) {
-  --bg: #0a0714; --bg2: #0e0a1c; --surface: #130e24; --surface2: #1a1430; --surface3: #251c42;
-  --fg: #f4f1ff; --muted: #a8a2c4; --faint: #706a93; --line: #241c3d; --line2: #372c5c;
-  --accent: #8b5cf6; --accent-fg: #ffffff; --accent-soft: rgba(139,92,246,.16); --ink-btn: #8b5cf6; --ink-btn-fg: #ffffff;
-  --g1: rgba(196,176,255,.08); --g2: rgba(196,176,255,.035); --gb: rgba(196,176,255,.13); --gh: rgba(220,205,255,.2);
-  --hi: #b79cff; --serif: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, sans-serif;
-}
-body:has(.lux) .ambient i:nth-child(1) { background: radial-gradient(circle, #7c3aed, transparent 68%); opacity: .34; }
-body:has(.lux) .ambient i:nth-child(2) { background: radial-gradient(circle, #4338ca, transparent 68%); opacity: .34; }
-body:has(.lux) .ambient i:nth-child(3) { background: radial-gradient(circle, #2a1a5e, transparent 68%); opacity: .5; }
-body:has(.lux) .btn.primary { background: linear-gradient(135deg, #b79cff, #b79cff 45%, #7c4dff); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 12px 34px -12px rgba(139,92,246,.6); }
+/* Marketing home. Palette and fonts now live in globals.css so every page matches. */
 .lux .hi { color: var(--hi); }
 
 /* hero */

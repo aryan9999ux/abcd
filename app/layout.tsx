@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { ReactNode } from "react";
 import "@fontsource-variable/inter/index.css";
+import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "@fontsource-variable/geist-mono/index.css";
 import Ambient from "@/components/site/Ambient";
 
