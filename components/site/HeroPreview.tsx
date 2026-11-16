@@ -118,7 +118,7 @@ export default function HeroPreview() {
           ))}
         </div>
       </div>
-      <p className="ht-note">Terminal preview — layout illustration</p>
+      <p className="ht-note">Terminal preview. Layout illustration.</p>
     </div>
   );
 }
