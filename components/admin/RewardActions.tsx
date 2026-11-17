@@ -19,7 +19,7 @@ export function RewardActions({ rewardId, status, userId, kyc }: { rewardId: str
       <button className="btn" disabled={busy} onClick={() => go(() => post("/api/admin/kyc", { userId, verified: !kyc }))}>{kyc ? "Unverify KYC" : "Verify KYC"}</button>
       {status === "requested" && <>
         <button className="btn primary" disabled={busy} onClick={() => go(() => post("/api/admin/rewards", { rewardId, action: "approve" }))}>Approve</button>
-        <button className="btn" disabled={busy} onClick={() => go(() => post("/api/admin/rewards", { rewardId, action: "reject" }))}>Reject</button>
+        <button className="btn" disabled={busy} onClick={() => { const reason = window.prompt("Reason the trader will see"); if (reason?.trim()) void go(() => post("/api/admin/rewards", { rewardId, action: "reject", reason })); }}>Reject</button>
       </>}
       {status === "approved" && (
         <button className="btn primary" disabled={busy} onClick={() => { const ref = prompt("Bank transfer reference"); if (ref) void go(() => post("/api/admin/rewards", { rewardId, action: "paid", payoutRef: ref })); }}>Mark paid</button>

@@ -28,10 +28,14 @@ export const kycSchema = z
   .object({
     fullName: z.string().trim().min(3, "Enter your full name as on your PAN card.").max(80),
     pan: z.string().trim().toUpperCase().regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN, for example ABCDE1234F."),
+    aadhaarNo: z.string().trim().regex(/^[0-9]{12}$/, "Enter your 12-digit Aadhaar number."),
+    district: z.string().trim().min(2, "Enter your district.").max(60),
+    state: z.string().trim().min(2, "Choose your state.").max(60),
     method: z.enum(["upi", "bank"]),
     upiId: z.string().trim().max(60).optional(),
     bankAccount: z.string().trim().optional(),
     bankIfsc: z.string().trim().toUpperCase().optional(),
+    consent: z.literal("true", { message: "Please tick the box to let us store your documents." }),
   })
   .superRefine((v, ctx) => {
     if (v.method === "upi" && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v.upiId ?? "")) ctx.addIssue({ code: "custom", path: ["upiId"], message: "Enter a valid UPI ID, for example name@bank." });

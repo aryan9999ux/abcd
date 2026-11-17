@@ -7,6 +7,7 @@ export interface RewardRow {
   fee_refund_inr?: number | null;
   status: "requested" | "approved" | "paid" | "rejected";
   payout_ref: string | null;
+  reject_reason?: string | null;
   requested_at: string;
   paid_at: string | null;
 }
@@ -21,6 +22,12 @@ export interface KycSubmission {
   bank_ifsc: string | null;
   reviewer_note: string | null;
   submitted_at: string;
+  aadhaar_no?: string | null;
+  district?: string | null;
+  state?: string | null;
+  pan_photo?: string | null;
+  aadhaar_photo?: string | null;
+  selfie_photo?: string | null;
 }
 
 export interface PaymentRow {

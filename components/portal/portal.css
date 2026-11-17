@@ -177,3 +177,12 @@
 .pt-poplink { display: flex; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 10px; font: 600 .9rem var(--f-body); } .pt-poplink:hover { background: var(--surface2); }
 .pt-receipt { max-width: 640px; display: grid; gap: 18px; } .pt-rhead { display: flex; justify-content: space-between; align-items: center; } .pt-rhead b { display: block; font: 700 1.2rem var(--f-display); } .pt-rhead small { color: var(--muted); }
 @media print { .pt-side, .pt-top, .pt-tabs, .no-print { display: none !important; } .pt { display: block; margin: 0; } .pt-page { padding: 0; } }
+.pt-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 560px) { .pt-two { grid-template-columns: 1fr; } }
+select.pt-input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+.pt-docs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } @media (max-width: 800px) { .pt-docs { grid-template-columns: 1fr; } }
+.pt-doc { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1.5px dashed var(--line); border-radius: 14px; cursor: pointer; background: var(--bg2); } .pt-doc:hover { border-color: var(--accent); }
+.pt-doc.have { border-style: solid; border-color: color-mix(in srgb, var(--up) 55%, var(--line)); }
+.pt-doc input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.pt-doc > span:last-of-type { display: grid; gap: 3px; min-width: 0; } .pt-doc b { font-size: .92rem; } .pt-doc small { color: var(--muted); font-size: .8rem; line-height: 1.4; word-break: break-word; }
+.pt-docic { width: 34px; height: 34px; border-radius: 99px; display: grid; place-items: center; flex: none; font-weight: 700; background: var(--surface2); color: var(--hi); } .pt-doc.have .pt-docic { background: var(--up); color: #07130c; }
+.pt-consent { display: flex; gap: 12px; align-items: flex-start; font-size: .9rem; line-height: 1.5; cursor: pointer; } .pt-consent input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }

@@ -105,7 +105,7 @@ export default function PayoutsPage() {
             <thead><tr><th>Requested</th><th>Account</th><th>Amount</th><th>Status</th><th>Reference</th></tr></thead>
             <tbody>{rewards.map((r) => (
               <tr key={r.id}><td>{new Date(r.requested_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</td><td>{accName(r.account_id)}</td><td>{inr(r.amount_inr)}</td>
-                <td><Badge tone={r.status === "paid" ? "ok" : r.status === "rejected" ? "bad" : "warn"}>{label(r.status)}</Badge></td><td>{r.payout_ref ?? "—"}</td></tr>
+                <td><Badge tone={r.status === "paid" ? "ok" : r.status === "rejected" ? "bad" : "warn"}>{label(r.status)}</Badge>{r.status === "rejected" && r.reject_reason && <div style={{ color: "var(--muted)", fontSize: ".8rem", marginTop: 4, whiteSpace: "normal", maxWidth: 240 }}>{r.reject_reason}</div>}</td><td>{r.payout_ref ?? "—"}</td></tr>
             ))}</tbody>
           </table></div>
         )}

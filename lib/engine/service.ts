@@ -700,14 +700,15 @@ export async function requestPayout(userId: string, accountId: string) {
 }
 
 /** Admin decision on a payout request. Approval starts the next cycle: balance back to the start, drawdown room restored. */
-export async function decideReward(rewardId: string, action: "approve" | "reject" | "paid", payoutRef?: string) {
+export async function decideReward(rewardId: string, action: "approve" | "reject" | "paid", payoutRef?: string, reason?: string) {
   const sb = admin();
   const rw = must(await sb.from("rewards").select("*").eq("id", rewardId).maybeSingle(), "load reward");
   if (!rw) throw new HttpError(404, "Reward not found.");
   return withLock(String(rw.account_id), async () => {
     if (action === "reject") {
       if (rw.status !== "requested") throw new HttpError(409, "Only requested payouts can be rejected.");
-      must(await sb.from("rewards").update({ status: "rejected" }).eq("id", rewardId), "reject reward");
+      if (!reason?.trim()) throw new HttpError(400, "Give a reason. The trader will see it.");
+      must(await sb.from("rewards").update({ status: "rejected", reject_reason: reason.trim() }).eq("id", rewardId), "reject reward");
       return {};
     }
     if (action === "paid") {
