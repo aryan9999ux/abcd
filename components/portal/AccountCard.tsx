@@ -51,6 +51,9 @@ export default function AccountCard({ a, plan, m }: { a: AccountRow; plan?: Plan
         <div className="pt-prog"><div className="row"><span>Today’s loss limit</span><b>{inr(v.dailyUsed)} of {inr(v.dailyLimit)}</b></div><Bar value={(v.dailyUsed / v.dailyLimit) * 100} tone="risk" label="Daily loss" /></div>
         <div className="pt-prog"><div className="row"><span>Total loss limit</span><b>{inr(v.ddUsed)} of {inr(v.ddLimit)}</b></div><Bar value={(v.ddUsed / v.ddLimit) * 100} tone="risk" label="Total loss" /></div>
       </div>
+      {(a.status === "breached" || (a.status === "closed" && a.breach_reason)) && (
+        <p className="pt-why"><b>{a.breach_reason?.replace(/^Closed by admin:\s*/, "Closed by our team: ")}</b> <Link href={`/accounts/${a.id}`}>See why</Link> · <span lang="hi">कारण देखें</span></p>
+      )}
       <div className="pt-af">
         {a.status === "active" && <Link className="pt-btn primary sm" href={`/terminal?account=${a.id}`}>Trade</Link>}
         <Link className="pt-btn sm" href={`/accounts/${a.id}`}>Details</Link>

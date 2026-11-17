@@ -48,6 +48,9 @@ h2 { font-size: clamp(1.5rem, 2.4vw, 1.9rem); }
 h3 { font-size: 1.1rem; letter-spacing: -.02em; line-height: 1.25; font-weight: 650; }
 p { margin: 0; }
 a { color: inherit; }
+/* Links inside running text: accent colour, no underline; a soft underline appears on hover and keyboard focus. */
+:where(p, li, label, small, dd, .muted) a:not([class]) { color: var(--hi); text-decoration: none; font-weight: 550; background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size .2s, color .15s; }
+:where(p, li, label, small, dd, .muted) a:not([class]):is(:hover, :focus-visible) { background-size: 100% 1px; }
 button { font: inherit; color: inherit; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
 ::selection { background: var(--accent); color: var(--accent-fg); }

@@ -306,7 +306,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           {account?.is_demo && account.status === "active" && (screen === "home" || screen === "acct") && (
             <div className="dk-note"><span><b>Demo account.</b> Same rules as the real plan, no payouts. {demoText}.</span><Link href="/checkout">Get a real account</Link></div>
           )}
-          {account?.status === "breached" && <div className="dk-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><Link href="/checkout">New account</Link></div>}
+          {account?.status === "breached" && <div className="dk-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><span style={{ display: "flex", gap: 14 }}><Link href={`/accounts/${account.id}`}>See why</Link><Link href="/checkout">New account</Link></span></div>}
           {account?.status === "passed" && <div className="dk-note ok"><span><b>Phase passed.</b> This account no longer takes orders.</span><Link href="/dashboard">Dashboard</Link></div>}
           {account?.status === "closed" && account.is_demo && <div className="dk-note"><span><b>Demo ended.</b> Pick a plan to keep trading.</span><Link href="/checkout">Choose a plan</Link></div>}
           {(quoteError || data.error) && <div className="dk-note" role="status"><span>{quoteError ?? data.error}</span></div>}
@@ -559,7 +559,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       {(account?.is_demo && account.status === "active") || account?.status === "breached" || account?.status === "passed" || account?.status === "closed" || quoteError || data.error ? (
         <div className="dx-notes">
           {account?.is_demo && account.status === "active" && <div className="dx-note"><span><b>Demo account.</b> Same rules as the real plan, no payouts. {demoText}.</span><Link href="/checkout">Get a real account</Link></div>}
-          {account?.status === "breached" && <div className="dx-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><Link href="/checkout">New account</Link></div>}
+          {account?.status === "breached" && <div className="dx-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><span style={{ display: "flex", gap: 14 }}><Link href={`/accounts/${account.id}`}>See why</Link><Link href="/checkout">New account</Link></span></div>}
           {account?.status === "passed" && <div className="dx-note ok"><span><b>Phase passed.</b> This account no longer takes orders.</span><Link href="/dashboard">Portal</Link></div>}
           {account?.status === "closed" && account.is_demo && <div className="dx-note"><span><b>Demo ended.</b> Pick a plan to keep trading.</span><Link href="/checkout">Choose a plan</Link></div>}
           {(quoteError || data.error) && <div className="dx-note" role="status"><span>{quoteError ?? data.error}</span></div>}
