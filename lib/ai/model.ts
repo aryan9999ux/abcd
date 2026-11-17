@@ -9,27 +9,37 @@ export interface Msg { role: "user" | "assistant"; text: string }
  * To switch provider later, only this file changes.
  */
 export async function ask(system: string, history: Msg[], maxTokens = 450): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new HttpError(503, "The assistant is not switched on yet.");
-  const model = process.env.AI_MODEL || "gemini-2.5-flash-lite";
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: history.map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] })),
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
-    }),
-    signal: AbortSignal.timeout(20000),
+  const r = await tryAsk(system, history, maxTokens);
+  if (r.ok) return r.text;
+  console.error("[ai] all attempts failed:", r.error);
+  throw new HttpError(502, "I could not answer just now. Please try again in a moment.");
+}
+
+/** Tries each endpoint and model until one answers. Keys starting "AQ." are Vertex AI express keys; "AIza" keys are AI Studio keys. */
+export async function tryAsk(system: string, history: Msg[], maxTokens = 450): Promise<{ ok: true; text: string; used: string } | { ok: false; error: string }> {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key) return { ok: false, error: "GEMINI_API_KEY is not set on the server." };
+  const models = [...new Set([process.env.AI_MODEL?.trim() || "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"])];
+  const bases = key.startsWith("AQ.")
+    ? ["https://aiplatform.googleapis.com/v1/publishers/google/models", "https://generativelanguage.googleapis.com/v1beta/models"]
+    : ["https://generativelanguage.googleapis.com/v1beta/models", "https://aiplatform.googleapis.com/v1/publishers/google/models"];
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: history.map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] })),
+    generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
   });
-  if (!res.ok) {
-    console.error("[ai]", res.status, (await res.text()).slice(0, 300));
-    throw new HttpError(502, "I could not answer just now. Please try again in a moment.");
+  const errs: string[] = [];
+  for (const base of bases) for (const model of models) {
+    try {
+      const res = await fetch(`${base}/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body, signal: AbortSignal.timeout(20000) });
+      if (!res.ok) { errs.push(`${new URL(base).host} ${model}: ${res.status} ${(await res.text()).slice(0, 160)}`); if (res.status === 401 || res.status === 403) break; continue; }
+      const j = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      const text = j.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
+      if (text) return { ok: true, text, used: `${new URL(base).host} ${model}` };
+      errs.push(`${model}: empty answer`);
+    } catch (e) { errs.push(`${model}: ${(e as Error).message}`); }
   }
-  const j = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  const text = j.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
-  if (!text) throw new HttpError(502, "I could not answer just now. Please try again in a moment.");
-  return text;
+  return { ok: false, error: errs.join(" || ") };
 }
 
 const hits = new Map<string, number[]>();
