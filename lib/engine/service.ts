@@ -464,37 +464,87 @@ export async function closeAll(userId: string, req: { accountId: string }) {
 
 /* ---------- checkout (dev mode: no payment is taken) ---------- */
 
-export async function createCheckout(userId: string, req: CheckoutRequest) {
-  const devOk = process.env.PAYMENTS_MODE === "dev" || process.env.NODE_ENV !== "production";
-  if (!devOk) throw new HttpError(501, "Payments are not enabled yet.");
+/** Creates the paid purchase and the trading account. Used by dev checkout and by an admin approving a manual payment. */
+async function fulfillPurchase(userId: string, planKey: string, accountSize: number, gatewayRef: string) {
   const sb = admin();
-
-  const plan = must(await sb.from("plans").select("key,evaluation_phases,active,rules").eq("key", req.planKey).maybeSingle(), "load plan");
+  const plan = must(await sb.from("plans").select("key,evaluation_phases,active,rules").eq("key", planKey).maybeSingle(), "load plan");
   if (!plan || !plan.active) throw new HttpError(404, "That plan is not available.");
-  const price = must(await sb.from("plan_prices").select("price_inr").eq("plan_key", req.planKey).eq("account_size", req.accountSize).maybeSingle(), "load price");
+  const price = must(await sb.from("plan_prices").select("price_inr").eq("plan_key", planKey).eq("account_size", accountSize).maybeSingle(), "load price");
   if (!price) throw new HttpError(404, "That account size is not available for this plan.");
-
-  const { count } = await sb.from("trading_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_demo", false);
-  if ((count ?? 0) >= MAX_ACCOUNTS_PER_USER) throw new HttpError(429, `You can hold at most ${MAX_ACCOUNTS_PER_USER} accounts.`);
 
   const amount = num(price.price_inr);
   const gst = round2(amount - amount / 1.18); // prices shown to buyers include 18% GST
   const purchase = must(await sb.from("purchases").insert({
-    user_id: userId, plan_key: req.planKey, account_size: req.accountSize, amount_inr: amount, gst_inr: gst,
-    status: "paid", gateway_ref: "dev",
+    user_id: userId, plan_key: planKey, account_size: accountSize, amount_inr: amount, gst_inr: gst,
+    status: "paid", gateway_ref: gatewayRef,
   }).select("id").single(), "create purchase");
 
   const acct = await sb.from("trading_accounts").insert({
-    user_id: userId, purchase_id: purchase.id, plan_key: req.planKey, account_size: req.accountSize,
+    user_id: userId, purchase_id: purchase.id, plan_key: planKey, account_size: accountSize,
     phase: plan.evaluation_phases === 0 ? "funded" : "phase_1", status: "active",
-    balance: req.accountSize, day_start_equity: req.accountSize, day_start_date: istDate(Date.now()),
-    rules: plan.rules ?? PLAN_RULES[req.planKey] ?? null, peak_eod_balance: req.accountSize,
+    balance: accountSize, day_start_equity: accountSize, day_start_date: istDate(Date.now()),
+    rules: plan.rules ?? PLAN_RULES[planKey] ?? null, peak_eod_balance: accountSize,
   }).select("id").single();
   if (acct.error || !acct.data) {
     await sb.from("purchases").update({ status: "failed" }).eq("id", purchase.id);
     throw new Error(`create account: ${acct.error?.message}`);
   }
-  return { purchaseId: purchase.id as string, accountId: acct.data.id as string };
+  return { purchaseId: purchase.id as string, accountId: acct.data.id as string, amount, gst };
+}
+
+async function assertCanBuy(userId: string) {
+  const { count } = await admin().from("trading_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_demo", false);
+  if ((count ?? 0) >= MAX_ACCOUNTS_PER_USER) throw new HttpError(429, `You can hold at most ${MAX_ACCOUNTS_PER_USER} accounts.`);
+}
+
+/** Dev only: opens the account without taking money. */
+export async function createCheckout(userId: string, req: CheckoutRequest) {
+  const devOk = process.env.PAYMENTS_MODE === "dev" || process.env.NODE_ENV !== "production";
+  if (!devOk) throw new HttpError(501, "Pay by UPI QR from the checkout page.");
+  await assertCanBuy(userId);
+  const r = await fulfillPurchase(userId, req.planKey, req.accountSize, "dev");
+  return { purchaseId: r.purchaseId, accountId: r.accountId };
+}
+
+/* ---------- manual payments: static QR, the trader sends the UTR, an admin approves ---------- */
+
+export async function submitPayment(userId: string, req: { planKey: string; accountSize: number; utr: string }) {
+  const sb = admin();
+  const plan = must(await sb.from("plans").select("key,active").eq("key", req.planKey).maybeSingle(), "load plan");
+  if (!plan || !plan.active) throw new HttpError(404, "That plan is not available.");
+  const price = must(await sb.from("plan_prices").select("price_inr").eq("plan_key", req.planKey).eq("account_size", req.accountSize).maybeSingle(), "load price");
+  if (!price) throw new HttpError(404, "That account size is not available for this plan.");
+  await assertCanBuy(userId);
+  const { count } = await sb.from("payment_requests").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("status", "pending");
+  if ((count ?? 0) >= 3) throw new HttpError(429, "You already have 3 payments waiting for approval. Please wait for them to be approved.");
+  const amount = num(price.price_inr);
+  const ins = await sb.from("payment_requests").insert({
+    user_id: userId, plan_key: req.planKey, account_size: req.accountSize, amount_inr: amount, gst_inr: round2(amount - amount / 1.18), utr: req.utr,
+  }).select("id").single();
+  if (ins.error || !ins.data) {
+    if (ins.error?.code === "23505") throw new HttpError(409, "This UTR was already submitted. Check the number, or contact support if you think this is a mistake.");
+    throw new Error(`create payment request: ${ins.error?.message}`);
+  }
+  return { paymentId: ins.data.id as string };
+}
+
+/** Admin decision on a payment. Approving opens the trader's account and issues the receipt number. */
+export async function decidePayment(paymentId: string, action: "approve" | "reject", reason?: string) {
+  const sb = admin();
+  const pr = must(await sb.from("payment_requests").select("*").eq("id", paymentId).maybeSingle(), "load payment");
+  if (!pr) throw new HttpError(404, "Payment not found.");
+  if (pr.status !== "pending") throw new HttpError(409, `This payment is already ${pr.status}.`);
+  if (action === "reject") {
+    if (!reason?.trim()) throw new HttpError(400, "Give a reason. The trader will see it.");
+    must(await sb.from("payment_requests").update({ status: "rejected", reject_reason: reason.trim(), decided_at: new Date().toISOString() }).eq("id", paymentId), "reject payment");
+    return {};
+  }
+  await assertCanBuy(String(pr.user_id));
+  const r = await fulfillPurchase(String(pr.user_id), String(pr.plan_key), num(pr.account_size), `manual:${pr.utr}`);
+  const seq = must(await sb.rpc("nextval_receipt"), "receipt number");
+  const receipt = `ACF-${new Date().getFullYear()}-${String(seq)}`;
+  must(await sb.from("payment_requests").update({ status: "approved", purchase_id: r.purchaseId, account_id: r.accountId, receipt_no: receipt, decided_at: new Date().toISOString() }).eq("id", paymentId), "approve payment");
+  return { accountId: r.accountId, receipt };
 }
 
 /* ---------- demo account: free, 3 days, same rules as the chosen plan, no payouts ---------- */

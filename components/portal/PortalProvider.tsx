@@ -6,7 +6,7 @@ import { accountMetrics, type AccountMetrics } from "@/components/trading/metric
 import type { PositionRow, SnapshotRow, TradeRow, AccountRow, PlanRow } from "@/components/trading/types";
 import { useQuotes } from "@/components/trading/useQuotes";
 import { useTraderData } from "@/components/trading/useTraderData";
-import type { KycSubmission, PortalInitial, RewardRow } from "./types";
+import type { KycSubmission, PaymentRow, PortalInitial, RewardRow } from "./types";
 
 interface Ctx {
   user: PortalInitial["user"];
@@ -18,6 +18,7 @@ interface Ctx {
   snapshots: SnapshotRow[];
   metrics: Record<string, AccountMetrics>;
   rewards: RewardRow[];
+  payments: PaymentRow[];
   kycVerified: boolean;
   kyc: KycSubmission | null;
   setSelected: (id: string | null) => void;
@@ -36,6 +37,7 @@ export function PortalProvider({ initial, children }: { initial: PortalInitial; 
   const [selected, setSelected] = useState<string | null>(null);
   const data = useTraderData(initial.accounts, selected);
   const [rewards, setRewards] = useState(initial.rewards);
+  const [payments, setPayments] = useState(initial.payments);
   const [kyc, setKyc] = useState({ verified: initial.kycVerified, sub: initial.kyc });
   const instruments = useMemo(() => [...new Set(data.positions.filter((p) => !p.instrument.includes("|EQ|")).map((p) => p.instrument))].slice(0, 40), [data.positions]);
   const { quotes } = useQuotes(data.positions.length ? SYMBOLS : [], instruments);
@@ -48,12 +50,14 @@ export function PortalProvider({ initial, children }: { initial: PortalInitial; 
 
   const refreshExtra = useCallback(async () => {
     const sb = browserClient();
-    const [r, k, s] = await Promise.all([
+    const [r, k, s, pm] = await Promise.all([
       sb.from("rewards").select("*").order("requested_at", { ascending: false }),
       sb.from("kyc_status").select("verified").maybeSingle(),
       sb.from("kyc_submissions").select("*").maybeSingle(),
+      sb.from("payment_requests").select("*").order("created_at", { ascending: false }),
     ]);
     if (r.error || k.error || s.error) return;
+    if (pm.data) setPayments((pm.data as PaymentRow[]).map((x) => ({ ...x, account_size: Number(x.account_size), amount_inr: Number(x.amount_inr), gst_inr: Number(x.gst_inr) })));
     if (r.data) setRewards((r.data as RewardRow[]).map((x) => ({ ...x, amount_inr: Number(x.amount_inr) })));
     setKyc({ verified: !!k.data?.verified, sub: (s.data as KycSubmission | null) ?? null });
   }, []);
@@ -65,7 +69,7 @@ export function PortalProvider({ initial, children }: { initial: PortalInitial; 
   const value: Ctx = {
     user: initial.user, accounts: data.accounts, plans: initial.plans, fromPrice: initial.fromPrice,
     positions: data.positions, trades: data.trades, snapshots: data.snapshots, metrics,
-    rewards, kycVerified: kyc.verified, kyc: kyc.sub, setSelected, refresh,
+    rewards, payments, kycVerified: kyc.verified, kyc: kyc.sub, setSelected, refresh,
   };
   return <C.Provider value={value}>{children}</C.Provider>;
 }

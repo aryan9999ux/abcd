@@ -8,11 +8,12 @@ import type { Plan, PlanPrice } from "./types";
 import { inr, sizeLabel } from "./format";
 import PlanPicker from "./PlanPicker";
 import { planFacts } from "./planFacts";
+import PayPanel, { type PaySettings } from "./PayPanel";
 
 export default function CheckoutForm({
-  plans, prices, initialPlan, initialSize, email, testMode, demoAvailable,
+  plans, prices, initialPlan, initialSize, email, testMode, demoAvailable, pay,
 }: {
-  plans: Plan[]; prices: PlanPrice[]; initialPlan?: string; initialSize?: number; email?: string; testMode: boolean; demoAvailable: boolean;
+  plans: Plan[]; prices: PlanPrice[]; initialPlan?: string; initialSize?: number; email?: string; testMode: boolean; demoAvailable: boolean; pay: PaySettings;
 }) {
   const router = useRouter();
   const [planKey, setPlanKey] = useState(plans.find((p) => p.key === initialPlan)?.key ?? plans[0]?.key);
@@ -20,6 +21,7 @@ export default function CheckoutForm({
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
 
   const plan = plans.find((p) => p.key === planKey);
   const list = prices.filter((x) => x.plan_key === planKey).sort((a, b) => a.account_size - b.account_size);
@@ -31,7 +33,13 @@ export default function CheckoutForm({
   const total = active.price_inr;
   const base = Math.round(total / 1.18);
 
-  async function pay() {
+  function openPay() {
+    if (!agree) return setError("Please tick the box to confirm you have read this.");
+    setError(null);
+    setPaying(true);
+  }
+
+  async function testBuy() {
     if (!agree) return setError("Please tick the box to confirm you have read this.");
     setError(null);
     setBusy(true);
@@ -87,7 +95,7 @@ export default function CheckoutForm({
         <div className="cx-ln"><span>GST (18%)</span><b>{inr(total - base)}</b></div>
         <div className="cx-tot"><span>Total</span><b>{inr(total)}</b></div>
         <ul className="cx-list">
-          <li>Your account opens right after payment</li>
+          <li>Your account opens within minutes of payment approval</li>
           <li>You keep {plan.reward_split_pct}% of the profit</li>
           <li>One fee. No monthly charges.</li>
         </ul>
@@ -96,10 +104,11 @@ export default function CheckoutForm({
           <span>I understand this is a simulated trading account, the fee is a platform fee and not an investment, and most participants do not earn rewards.</span>
         </label>
         {error && <p className="cx-err" role="alert">{error}</p>}
-        <button className="btn primary" type="button" onClick={pay} disabled={busy}>{busy ? "Opening your account…" : `Pay ${inr(total)}`}</button>
+        <button className="btn primary" type="button" onClick={openPay}>{`Pay ${inr(total)} by UPI`}</button>
         {email && <p className="cx-note">Account for {email}</p>}
-        {testMode && <p className="cx-note">Test mode: no payment is taken. A payment gateway is connected before launch.</p>}
+        {testMode && <p className="cx-note"><button type="button" className="cx-link" onClick={testBuy} disabled={busy}>{busy ? "Opening…" : "Test mode: open account without paying"}</button></p>}
       </aside>
+      {paying && <PayPanel pay={pay} amount={total} planKey={plan.key} size={active.account_size} label={`${plan.name}, ${sizeLabel(active.account_size)}`} onClose={() => setPaying(false)} />}
     </div>
   );
 }

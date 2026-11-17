@@ -173,3 +173,7 @@
 @media (max-width: 1000px) { .pt-cols { grid-template-columns: 1fr; } }
 
 .pt-sec { margin: 18px 0 -8px; } .pt-sec h2 { font: 700 1.25rem var(--f-display); letter-spacing: -.02em; }
+
+.pt-poplink { display: flex; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 10px; font: 600 .9rem var(--f-body); } .pt-poplink:hover { background: var(--surface2); }
+.pt-receipt { max-width: 640px; display: grid; gap: 18px; } .pt-rhead { display: flex; justify-content: space-between; align-items: center; } .pt-rhead b { display: block; font: 700 1.2rem var(--f-display); } .pt-rhead small { color: var(--muted); }
+@media print { .pt-side, .pt-top, .pt-tabs, .no-print { display: none !important; } .pt { display: block; margin: 0; } .pt-page { padding: 0; } }

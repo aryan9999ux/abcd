@@ -23,7 +23,22 @@ export interface KycSubmission {
   submitted_at: string;
 }
 
+export interface PaymentRow {
+  id: string;
+  plan_key: string;
+  account_size: number;
+  amount_inr: number;
+  gst_inr: number;
+  utr: string;
+  status: "pending" | "approved" | "rejected";
+  reject_reason: string | null;
+  receipt_no: string | null;
+  created_at: string;
+  decided_at: string | null;
+}
+
 export interface PortalInitial {
+  payments: PaymentRow[];
   user: { name: string; email: string };
   accounts: AccountRow[];
   plans: PlanRow[];

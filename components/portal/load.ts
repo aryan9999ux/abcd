@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { userClient } from "@/lib/supabase/server";
 import type { AccountRow, PlanRow } from "@/components/trading/types";
-import type { KycSubmission, PortalInitial, RewardRow } from "./types";
+import type { KycSubmission, PaymentRow, PortalInitial, RewardRow } from "./types";
 
 /** Server-side gate for every portal page: needs a session, then loads what the portal shows. RLS limits all rows to the trader's own. */
 export async function loadPortal(path: string): Promise<PortalInitial> {
@@ -9,7 +9,7 @@ export async function loadPortal(path: string): Promise<PortalInitial> {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
 
-  const [acc, plans, prices, rewards, kycS, sub, prof] = await Promise.all([
+  const [acc, plans, prices, rewards, kycS, sub, prof, pays] = await Promise.all([
     sb.from("trading_accounts").select("*").order("created_at", { ascending: true }),
     sb.from("plans").select("*"),
     sb.from("plan_prices").select("price_inr").order("price_inr", { ascending: true }).limit(1),
@@ -17,9 +17,11 @@ export async function loadPortal(path: string): Promise<PortalInitial> {
     sb.from("kyc_status").select("verified").maybeSingle(),
     sb.from("kyc_submissions").select("*").maybeSingle(),
     sb.from("profiles").select("full_name").maybeSingle(),
+    sb.from("payment_requests").select("*").order("created_at", { ascending: false }),
   ]);
   const n = Number;
   return {
+    payments: ((pays.data ?? []) as PaymentRow[]).map((x) => ({ ...x, account_size: n(x.account_size), amount_inr: n(x.amount_inr), gst_inr: n(x.gst_inr) })),
     user: { name: (prof.data?.full_name as string) || (user.email ?? "").split("@")[0], email: user.email ?? "" },
     accounts: ((acc.data ?? []) as AccountRow[]).map((a) => ({ ...a, account_size: n(a.account_size), balance: n(a.balance), day_start_equity: n(a.day_start_equity) })),
     plans: ((plans.data ?? []) as PlanRow[]).map((p) => ({

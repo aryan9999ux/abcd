@@ -31,3 +31,29 @@
 .cx-sum .btn { width: 100%; justify-content: center; padding: 14px 20px; font-size: 1rem; }
 .cx-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: .92rem; color: var(--muted); } .cx-list li { padding-left: 24px; position: relative; } .cx-list li::before { content: ""; position: absolute; left: 0; top: 6px; width: 12px; height: 8px; border-left: 2px solid var(--hi); border-bottom: 2px solid var(--hi); transform: rotate(-45deg) scale(.9); }
 @media (max-width: 860px) { .cx { padding-block: 24px 60px; } .cx-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; } .cx-sum { position: static; } .cxf div { flex-direction: column; gap: 2px; } .cxf b { text-align: left; } }
+
+/* manual UPI payment */
+.pay-wrap { position: fixed; inset: 0; z-index: 90; background: rgba(5,3,14,.72); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.pay { position: relative; width: min(820px, 100%); background: var(--bg2); border: 1px solid var(--line); border-radius: 22px; padding: 28px; box-shadow: 0 40px 100px -30px rgba(0,0,0,.7); }
+.pay h2 { font: 700 1.45rem var(--f-display); letter-spacing: -.03em; margin: 0; } .pay-sub { color: var(--muted); margin: 4px 0 20px; font-size: .94rem; }
+.pay-x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 99px; border: 0; background: var(--surface2); color: var(--fg); font-size: 1.3rem; cursor: pointer; }
+.pay-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 28px; align-items: start; }
+.pay-qrcol { display: grid; gap: 12px; justify-items: center; }
+.pay-qr { position: relative; width: 252px; height: 252px; padding: 16px; border-radius: 20px; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px var(--line), 0 20px 50px -20px rgba(124,77,255,.6); overflow: hidden; }
+.pay-qr img { width: 220px; height: 220px; object-fit: contain; display: block; }
+.pay-noqr { color: #444; font-size: .88rem; text-align: center; padding: 20px; }
+.pay-qr .c { position: absolute; width: 26px; height: 26px; border: 3px solid #7c4dff; } .c.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; } .c.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; } .c.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; } .c.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+.pay-qr .scan { position: absolute; left: 10px; right: 10px; height: 3px; top: 12px; border-radius: 3px; background: linear-gradient(90deg, transparent, #7c4dff 20%, #b79cff 50%, #7c4dff 80%, transparent); box-shadow: 0 0 14px 4px rgba(124,77,255,.55); animation: payscan 2.4s ease-in-out infinite; }
+@keyframes payscan { 0% { top: 12px; opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { top: calc(100% - 15px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pay-qr .scan { animation: none; top: 50%; } }
+.pay-upi { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%; border: 1px dashed var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 10px 12px; cursor: pointer; font: inherit; text-align: left; }
+.pay-upi span { color: var(--muted); font-size: .76rem; } .pay-upi b { font: 600 .9rem var(--f-mono); overflow: hidden; text-overflow: ellipsis; } .pay-upi em { font-style: normal; color: var(--hi); font-weight: 650; font-size: .8rem; }
+.pay-payee { margin: 0; color: var(--muted); font-size: .84rem; }
+.pay-form { display: grid; gap: 12px; align-content: start; } .pay-form ol { margin: 0 0 6px; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); line-height: 1.5; } .pay-form ol b { color: var(--fg); }
+.pay-form label { font-weight: 650; font-size: .88rem; }
+.pay-form input { width: 100%; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 12px; padding: 14px; font: 600 1.15rem var(--f-mono); letter-spacing: .12em; outline: 0; } .pay-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.pay-form small { color: var(--muted); font-size: .82rem; line-height: 1.5; }
+.pay-done { text-align: center; display: grid; gap: 12px; justify-items: center; padding: 20px 8px; } .pay-done p { color: var(--muted); max-width: 46ch; line-height: 1.55; margin: 0; }
+.pay-tick { width: 64px; height: 64px; border-radius: 99px; display: grid; place-items: center; font-size: 1.8rem; color: #07130c; background: var(--up); box-shadow: 0 0 0 8px color-mix(in srgb, var(--up) 20%, transparent); }
+@media (max-width: 720px) { .pay { padding: 22px 18px; } .pay-grid { grid-template-columns: 1fr; } }
+.cx-link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }

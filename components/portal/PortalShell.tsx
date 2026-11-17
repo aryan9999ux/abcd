@@ -11,6 +11,7 @@ const NAV: [string, string, string][] = [
   ["/dashboard", "Overview", "overview"],
   ["/accounts", "Accounts", "accounts"],
   ["/payouts", "Payouts", "payouts"],
+  ["/payments", "Payments", "receipt"],
   ["/verification", "Verification", "verify"],
 ];
 
@@ -76,6 +77,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           {menu && (
             <div className="pt-pop" role="menu">
               <div className="pt-popwho"><b>{user.name}</b><small>{user.email}</small></div>
+              <Link className="pt-poplink" href="/payments"><Icon n="receipt" size={16} /> Payments</Link>
               <button onClick={toggleTheme}><Icon n="sun" size={16} /> Switch theme</button>
               <button onClick={signOut}><Icon n="out" size={16} /> Sign out</button>
             </div>

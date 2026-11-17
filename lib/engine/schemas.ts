@@ -40,3 +40,15 @@ export const kycSchema = z
       if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.bankIfsc ?? "")) ctx.addIssue({ code: "custom", path: ["bankIfsc"], message: "Enter a valid IFSC, for example HDFC0001234." });
     }
   });
+
+export const paymentSchema = z.object({
+  planKey: z.string().min(1).max(40),
+  accountSize: z.number().int().positive(),
+  utr: z.string().trim().regex(/^[0-9]{12}$/, "Enter the 12-digit UTR (reference number) from your UPI app."),
+});
+
+export const paymentDecisionSchema = z.object({
+  paymentId: uuid,
+  action: z.enum(["approve", "reject"]),
+  reason: z.string().trim().max(300).optional(),
+});

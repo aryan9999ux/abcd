@@ -26,6 +26,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const plans = (plansRaw ?? []) as Plan[];
   const prices = ((pricesRaw ?? []) as PlanPrice[]).map((p) => ({ ...p, account_size: Number(p.account_size), price_inr: Number(p.price_inr) }));
   const size = Number(sp.size);
+  const { data: ps } = await auth.from("payment_settings").select("upi_id,payee_name,qr_path").maybeSingle();
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const pay = { upiId: (ps?.upi_id as string) ?? null, payee: (ps?.payee_name as string) ?? null, qrUrl: ps?.qr_path ? `${base}/storage/v1/object/public/payment-qr/${ps.qr_path}` : null };
   const { count: demos } = await auth.from("trading_accounts").select("id", { count: "exact", head: true }).eq("is_demo", true);
 
   return (
@@ -36,7 +39,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       </div>
       <CheckoutForm
         plans={plans} prices={prices} initialPlan={sp.plan} initialSize={Number.isFinite(size) ? size : undefined}
-        email={data.user.email} demoAvailable={(demos ?? 0) === 0}
+        email={data.user.email} pay={pay} demoAvailable={(demos ?? 0) === 0}
         testMode={process.env.PAYMENTS_MODE === "dev" || process.env.NODE_ENV !== "production"}
       />
     </main>
