@@ -15,14 +15,29 @@ export async function ask(system: string, history: Msg[], maxTokens = 450): Prom
   throw new HttpError(502, "I could not answer just now. Please try again in a moment.");
 }
 
+let found: { at: number; list: string[] } | null = null;
+/** Google retires models often, so ask it which ones this key can use. Cheapest first: newest Flash-Lite, then newest Flash. */
+async function discover(key: string): Promise<string[]> {
+  if (found && Date.now() - found.at < 3_600_000) return found.list;
+  try {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(10000) });
+    const j = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+    const names = (j.models ?? []).filter((m) => m.supportedGenerationMethods?.includes("generateContent")).map((m) => m.name.replace("models/", ""))
+      .filter((n) => /^gemini-[\d.]+-flash(-lite)?$/.test(n));
+    const ver = (n: string) => parseFloat(n.match(/gemini-([\d.]+)/)![1]);
+    const sorted = (re: RegExp) => names.filter((n) => re.test(n)).sort((a, b) => ver(b) - ver(a));
+    const list = [...sorted(/flash-lite$/), ...sorted(/-flash$/)];
+    if (list.length) found = { at: Date.now(), list };
+    return list;
+  } catch { return []; }
+}
+
 /** Tries each endpoint and model until one answers. Keys starting "AQ." are Vertex AI express keys; "AIza" keys are AI Studio keys. */
 export async function tryAsk(system: string, history: Msg[], maxTokens = 450): Promise<{ ok: true; text: string; used: string } | { ok: false; error: string }> {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) return { ok: false, error: "GEMINI_API_KEY is not set on the server." };
-  const models = [...new Set([process.env.AI_MODEL?.trim() || "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash"])];
-  const bases = key.startsWith("AQ.")
-    ? ["https://aiplatform.googleapis.com/v1/publishers/google/models", "https://generativelanguage.googleapis.com/v1beta/models"]
-    : ["https://generativelanguage.googleapis.com/v1beta/models", "https://aiplatform.googleapis.com/v1/publishers/google/models"];
+  const models = [...new Set([process.env.AI_MODEL?.trim(), ...(await discover(key))].filter(Boolean) as string[])].slice(0, 4);
+  const bases = ["https://generativelanguage.googleapis.com/v1beta/models"];
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: history.map((m) => ({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] })),
