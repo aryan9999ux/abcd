@@ -103,7 +103,7 @@ export default function VerificationPage() {
 
         {!locked && (
           <section className="pt-card">
-            <label className="pt-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>I confirm these details are mine, and I allow Apex Capital Funded to store my documents to verify my identity and pay me.</span></label>
+            <label className="pt-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>I confirm these details are mine, and I allow Edge Funded to store my documents to verify my identity and pay me.</span></label>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
               <button className="pt-btn primary" disabled={busy}>{busy ? "Sending…" : state === "none" ? "Submit for verification" : "Send again"}</button>
               <small style={{ color: "var(--muted)" }}>Signed in as {user.email}</small>

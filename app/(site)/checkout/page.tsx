@@ -5,7 +5,7 @@ import CheckoutForm from "@/components/site/CheckoutForm";
 import type { Plan, PlanPrice } from "@/components/site/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Choose your account · Apex Capital Funded" };
+export const metadata = { title: "Choose your account · Edge Funded" };
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ plan?: string; size?: string }> }) {
   const sp = await searchParams;

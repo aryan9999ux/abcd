@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
+import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import Chat from "@/components/chat/Chat";
 import { Icon } from "./ui";
 import { usePortal } from "./PortalProvider";
@@ -46,7 +47,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   return (
     <div className="pt">
       <aside className="pt-side">
-        <Link className="pt-brand" href="/"><svg className="pt-logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="url(#ptg)" /><defs><linearGradient id="ptg" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#a47bff" /><stop offset="1" stopColor="#6236e8" /></linearGradient></defs><path d="M7 21 13 13l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg><b>Apex Capital Funded</b></Link>
+        <Link className="pt-brand" href="/"><LogoMark size={30} id="ps" /><b><Wordmark /></b></Link>
         <nav aria-label="Portal">
           {NAV.map(([href, label, ic]) => (
             <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}>
@@ -71,7 +72,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
 
       <div className="pt-col">
         <header className="pt-top">
-          <Link className="pt-brand" href="/"><svg className="pt-logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="url(#ptg)" /><defs><linearGradient id="ptg" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#a47bff" /><stop offset="1" stopColor="#6236e8" /></linearGradient></defs><path d="M7 21 13 13l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg><b>Apex Capital Funded</b></Link>
+          <Link className="pt-brand" href="/"><LogoMark size={30} id="ps" /><b><Wordmark /></b></Link>
           <span className="pt-sp" />
           <Link className="pt-buy" href="/checkout"><Icon n="plus" size={16} /> Buy account</Link>
           <button className="pt-av btn" onClick={() => setMenu((m) => !m)} aria-label="Account menu" aria-expanded={menu}>{initial}</button>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { userClient } from "@/lib/supabase/server";
+import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import ThemeToggle from "./ThemeToggle";
 import MobileNav from "./MobileNav";
 import TabBar from "./TabBar";
@@ -25,12 +26,9 @@ export default async function Header() {
     <header className="top">
       <div className="wrap">
         <div className="bar">
-          <Link className="brand" href="/" aria-label="Apex Capital Funded home">
-            <svg viewBox="0 0 32 32" aria-hidden="true">
-              <rect width="32" height="32" rx="8" fill="var(--accent)" />
-              <path d="M7 21 13 13l4 4 8-9" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="brand-name">Apex Capital Funded</span>
+          <Link className="brand" href="/" aria-label="Edge Funded home">
+            <LogoMark size={30} id="hd" />
+            <span className="brand-name"><Wordmark /></span>
           </Link>
           <nav className="links" aria-label="Primary">
             <Link href="/#plans">Plans</Link>

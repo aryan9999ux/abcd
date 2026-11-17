@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import ReceiptPage from "@/components/portal/ReceiptPage";
 
-export const metadata: Metadata = { title: "Receipt · Apex Capital Funded" };
+export const metadata: Metadata = { title: "Receipt · Edge Funded" };
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

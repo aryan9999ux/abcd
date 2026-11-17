@@ -1,5 +1,6 @@
 "use client";
 import "./trading.css";
+import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -52,11 +53,8 @@ export default function Shell({ active, accountId, slot, ticker, children }: Pro
           <div className="tr-main" style={{ paddingBlock: 0 }}>
             <div className="tr-top tr-glass">
               <Link className="tr-brand" href="/">
-                <svg viewBox="0 0 32 32" aria-hidden="true">
-                  <rect width="32" height="32" rx="8" fill="var(--accent)" />
-                  <path d="M7 21 13 13l4 4 8-9" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>Apex Capital Funded</span>
+                <LogoMark size={26} id="sh" />
+                <span><Wordmark /></span>
               </Link>
               <nav className="tr-nav" aria-label="Workspace">
                 <Link href="/dashboard" aria-current={active === "dashboard" ? "page" : undefined}>Dashboard</Link>

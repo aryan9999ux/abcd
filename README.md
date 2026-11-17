@@ -1,4 +1,4 @@
-# Apex Capital Funded
+# Edge Funded
 
 Simulated funded-trading platform for Indian markets (placeholder brand name).
 

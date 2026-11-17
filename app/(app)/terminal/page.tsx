@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import TerminalClient from "@/components/trading/TerminalClient";
 import { loadTradingInitial } from "@/components/trading/loadInitial";
 
-export const metadata: Metadata = { title: "Terminal · Apex Capital Funded" };
+export const metadata: Metadata = { title: "Terminal · Edge Funded" };
 export const dynamic = "force-dynamic";
 
 export default async function TerminalPage({ searchParams }: { searchParams: Promise<{ account?: string }> }) {

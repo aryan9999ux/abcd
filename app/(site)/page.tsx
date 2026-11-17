@@ -17,14 +17,14 @@ export const revalidate = 60;
 
 const FAQ: [string, string][] = [
   ["How fast can I start?", "Right away. Sign up, pick an account and a size, and you can start trading in a few minutes. You can place trades when the market is open: Monday to Friday, 9:15 AM to 3:30 PM."],
-  ["What exactly am I buying?", "A trading account on our own platform, with live NSE and BSE prices. You pay a one-time fee. Profit payouts are made by Apex Capital Funded as set out in the Terms."],
+  ["What exactly am I buying?", "A trading account on our own platform, with live NSE and BSE prices. You pay a one-time fee. Profit payouts are made by Edge Funded as set out in the Terms."],
   ["Where do the prices come from?", "Every price is a live NSE or BSE price, for stocks, futures and options. Your trades are filled at those prices."],
   ["When do I get paid?", "Once your funded account meets the payout conditions in the Terms, you can ask for a payout from your dashboard. You keep 80% of the profit."],
   ["What happens if I breach a limit?", "That account is closed. You only lose the fee you paid, and you can start a new account any time."],
   ["Can I trade options and futures?", "Yes. You can trade stocks, futures and options on live NSE and BSE prices, including Nifty and Bank Nifty."],
   ["Do I get my fee back?", "Your fee is returned with your rewards once you are funded and get paid, as set out in the Terms."],
   ["Can I have more than one account?", "Yes. You can run several accounts and switch between them in one click from your dashboard."],
-  ["Is Apex Capital Funded a broker?", "No. We do not place orders on any exchange and we do not hold your shares. The Terms explain exactly what we offer."],
+  ["Is Edge Funded a broker?", "No. We do not place orders on any exchange and we do not hold your shares. The Terms explain exactly what we offer."],
 ];
 const TAPE = ["NIFTY 50", "BANK NIFTY", "SENSEX", "FINNIFTY", "RELIANCE", "HDFC BANK", "TCS", "INFOSYS", "ICICI BANK", "SBIN", "OPTION CHAIN", "FUTURES", "STOCKS AT 5X"];
 

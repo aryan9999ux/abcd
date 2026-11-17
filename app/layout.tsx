@@ -6,7 +6,7 @@ import "@fontsource-variable/geist-mono/index.css";
 import Ambient from "@/components/site/Ambient";
 
 export const metadata = {
-  title: "Apex Capital Funded",
+  title: "Edge Funded",
   description: "Simulated funded trading accounts for Indian markets.",
 };
 

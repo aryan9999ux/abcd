@@ -88,7 +88,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
       </p>
       {signup && (
         <p className="muted" style={{ fontSize: ".76rem" }}>
-          Accounts are simulated. Apex Capital Funded is not a broker and does not give investment advice.
+          Accounts are simulated. Edge Funded is not a broker and does not give investment advice.
         </p>
       )}
     </form>

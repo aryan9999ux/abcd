@@ -5,7 +5,7 @@ import DemoForm from "@/components/site/DemoForm";
 import type { Plan } from "@/components/site/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Free demo · Apex Capital Funded" };
+export const metadata = { title: "Free demo · Edge Funded" };
 
 export default async function DemoPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
   const sp = await searchParams;

@@ -1,4 +1,5 @@
 "use client";
+import { LogoMark } from "@/components/brand/Logo";
 import Px from "./Px";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -534,7 +535,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     <div className="dx tr">
       <header className="dx-top">
         <Link className="dx-back" href="/dashboard" aria-label="Back to portal">‹ Portal</Link>
-        <svg className="dx-logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#7c4dff" /><path d="M7 21 13 13l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span className="dx-logo"><LogoMark size={26} id="tx" /></span>
         <div className="dx-idx">
           {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => { const c = chg(k); return (
             <button key={k} onClick={() => { pickUnderlying(k); setCentre("chart"); }}>

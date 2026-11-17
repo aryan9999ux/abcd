@@ -14,7 +14,7 @@ export default function ReceiptPage({ id }: { id: string }) {
     <>
       <Link className="pt-link no-print" href="/payments">‹ All payments</Link>
       <section className="pt-card pt-receipt">
-        <div className="pt-rhead"><div><b>Apex Capital Funded</b><small>Payment receipt</small></div><span className="pt-badge ok">Paid</span></div>
+        <div className="pt-rhead"><div><b>Edge Funded</b><small>Payment receipt</small></div><span className="pt-badge ok">Paid</span></div>
         <div className="pt-dl">
           <div><span>Receipt no.</span><b>{p.receipt_no}</b></div>
           <div><span>Date</span><b>{new Date(p.decided_at ?? p.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</b></div>

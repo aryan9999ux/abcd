@@ -565,3 +565,5 @@ header.top nav.links a, header.top .brand { white-space: nowrap; }
 }
 @media (min-width: 861px) and (max-width: 1240px) { header.top .brand-name { display: none; } }
 @media (min-width: 861px) and (max-width: 1060px) { header.top nav.links a { padding: 6px 9px; font-size: .82rem; } header.top .bar .btn.sm { padding-inline: 12px; } }
+
+.wordmark { white-space: nowrap; } .wordmark b { color: var(--hi); font-weight: inherit; }
