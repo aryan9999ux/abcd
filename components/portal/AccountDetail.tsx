@@ -5,6 +5,7 @@ import EquityChart from "@/components/trading/EquityChart";
 import { dateTime, inr, nameOfKey, num, phaseLabel, statusLabel } from "@/components/trading/format";
 import { accountView, compact } from "./calc";
 import { usePortal } from "./PortalProvider";
+import ClosureNotice from "./ClosureNotice";
 import { Badge, Bar, Kpi, PageHead } from "./ui";
 
 type Tab = "overview" | "trades" | "rules";
@@ -31,7 +32,7 @@ export default function AccountDetail({ id }: { id: string }) {
         sub={<span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>{a.is_demo && <Badge tone="warn">Demo</Badge>}<Badge tone={a.status === "active" ? "ok" : a.status === "breached" ? "bad" : "brand"}>{a.status === "active" ? phaseLabel(a.phase) : statusLabel(a.status)}</Badge></span>}
         actions={a.status === "active" ? <Link className="pt-btn primary" href={`/terminal?account=${a.id}`}>Open terminal</Link> : undefined}
       />
-      {a.status === "breached" && <div className="pt-banner bad"><div><b>This account is closed.</b><p>{a.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</p></div><Link className="pt-btn sm" href="/checkout">Buy a new account</Link></div>}
+      {(a.status === "breached" || (a.status === "closed" && a.breach_reason)) && <ClosureNotice a={a} />}
       {a.status === "passed" && <div className="pt-banner ok"><div><b>You passed this phase.</b><p>Your next account step is being set up.</p></div></div>}
 
       <div className="pt-tabsbar" role="tablist">

@@ -220,15 +220,16 @@ const breachText = (b: Breach, ctx: Ctx): string =>
     : b === "daily_loss_limit" ? "Daily loss limit reached"
     : `More than ${ctx.acct.rules.maxOpenPositions} open positions`;
 
-async function squareOff(ctx: Ctx, breach: Breach) {
-  must(await ctx.sb.from("orders").update({ status: "cancelled", reject_reason: breachText(breach, ctx) })
+async function squareOff(ctx: Ctx, breach: Breach, customText?: string) {
+  const text = customText ?? breachText(breach, ctx);
+  must(await ctx.sb.from("orders").update({ status: "cancelled", reject_reason: text })
     .eq("account_id", ctx.acct.id).eq("status", "pending"), "cancel pending");
   for (const p of [...ctx.positions]) {
     const ref = parseInstrumentKey(p.instrument);
     const px = markFor(ref);
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
   }
-  const patch = { status: "breached", breach_reason: breachText(breach, ctx) };
+  const patch = { status: "breached", breach_reason: text };
   must(await ctx.sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "breach account");
   // A breach cancels any payout that was not paid yet.
   must(await ctx.sb.from("rewards").update({ status: "rejected" }).eq("account_id", ctx.acct.id).eq("status", "requested"), "cancel payout request");
@@ -728,6 +729,17 @@ export async function decideReward(rewardId: string, action: "approve" | "reject
     };
     must(await sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "reset account");
     must(await sb.from("rewards").update({ status: "approved" }).eq("id", rewardId), "approve reward");
+    return {};
+  });
+}
+
+/** Admin closes an account by hand: positions are squared off and the trader sees the reason. */
+export async function adminTerminate(accountId: string, reason: string) {
+  if (!reason.trim()) throw new HttpError(400, "Give a reason. The trader will see it.");
+  return withLock(accountId, async () => {
+    const ctx = await loadCtx(admin(), accountId);
+    if (ctx.acct.status !== "active") throw new HttpError(409, "This account is not active.");
+    await squareOff(ctx, "overall_loss_limit", `Closed by admin: ${reason.trim()}`);
     return {};
   });
 }

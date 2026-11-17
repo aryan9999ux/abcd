@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const TABS: [string, string][] = [["/admin/zerodha", "Zerodha"], ["/admin/payments", "Payments"], ["/admin/rewards", "Rewards"], ["/admin/kyc", "Verification"], ["/admin/simulator", "Simulator and rules"]];
+const TABS: [string, string][] = [["/admin/zerodha", "Zerodha"], ["/admin/payments", "Payments"], ["/admin/accounts", "Accounts"], ["/admin/rewards", "Rewards"], ["/admin/kyc", "Verification"], ["/admin/simulator", "Simulator and rules"]];
 
 export default function AdminNav() {
   const path = usePathname();
