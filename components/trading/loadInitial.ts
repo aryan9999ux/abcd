@@ -13,7 +13,7 @@ export interface TradingInitial {
  * Server-side gate for the dashboard and terminal. Redirects to /login without a session,
  * then loads the trader's accounts (RLS limits this to their own) and the plan catalogue.
  */
-export async function loadTradingInitial(path: "/dashboard" | "/terminal", accountParam?: string): Promise<TradingInitial> {
+export async function loadTradingInitial(path: string, accountParam?: string): Promise<TradingInitial> {
   const sb = await userClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);

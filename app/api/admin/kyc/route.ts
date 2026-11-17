@@ -14,6 +14,7 @@ export function POST(req: Request) {
     const b = parse(schema, await readJson(req));
     const { error } = await adminClient().from("kyc_status").upsert({ user_id: b.userId, verified: b.verified, note: b.note ?? null, updated_at: new Date().toISOString() });
     if (error) throw new Error(error.message);
+    await adminClient().from("kyc_submissions").update({ status: b.verified ? "verified" : "rejected", reviewer_note: b.note ?? null, reviewed_at: new Date().toISOString() }).eq("user_id", b.userId);
     return {};
   });
 }

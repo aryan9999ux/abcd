@@ -23,3 +23,20 @@ export const checkoutSchema = z.object({ planKey: z.string().min(1).max(40), acc
 export const demoSchema = z.object({ planKey: z.string().min(1).max(40) });
 
 export const payoutRequestSchema = z.object({ accountId: uuid });
+
+export const kycSchema = z
+  .object({
+    fullName: z.string().trim().min(3, "Enter your full name as on your PAN card.").max(80),
+    pan: z.string().trim().toUpperCase().regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Enter a valid PAN, for example ABCDE1234F."),
+    method: z.enum(["upi", "bank"]),
+    upiId: z.string().trim().max(60).optional(),
+    bankAccount: z.string().trim().optional(),
+    bankIfsc: z.string().trim().toUpperCase().optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.method === "upi" && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v.upiId ?? "")) ctx.addIssue({ code: "custom", path: ["upiId"], message: "Enter a valid UPI ID, for example name@bank." });
+    if (v.method === "bank") {
+      if (!/^[0-9]{9,18}$/.test(v.bankAccount ?? "")) ctx.addIssue({ code: "custom", path: ["bankAccount"], message: "Enter your bank account number (9 to 18 digits)." });
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v.bankIfsc ?? "")) ctx.addIssue({ code: "custom", path: ["bankIfsc"], message: "Enter a valid IFSC, for example HDFC0001234." });
+    }
+  });
