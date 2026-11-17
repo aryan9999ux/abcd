@@ -4,7 +4,8 @@ import { userClient } from "@/lib/supabase/server";
 import CheckoutForm from "@/components/site/CheckoutForm";
 import type { Plan, PlanPrice } from "@/components/site/types";
 
-export const metadata = { title: "Checkout · Apex Capital Funded" };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Choose your account · Apex Capital Funded" };
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ plan?: string; size?: string }> }) {
   const sp = await searchParams;
@@ -25,12 +26,19 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const plans = (plansRaw ?? []) as Plan[];
   const prices = ((pricesRaw ?? []) as PlanPrice[]).map((p) => ({ ...p, account_size: Number(p.account_size), price_inr: Number(p.price_inr) }));
   const size = Number(sp.size);
+  const { count: demos } = await auth.from("trading_accounts").select("id", { count: "exact", head: true }).eq("is_demo", true);
 
   return (
-    <main className="wrap page view">
-      <span className="eyebrow">Checkout</span>
-      <h2 style={{ marginTop: 8 }}>Start your account</h2>
-      <CheckoutForm plans={plans} prices={prices} initialPlan={sp.plan} initialSize={Number.isFinite(size) ? size : undefined} email={data.user.email} />
+    <main className="wrap cx view">
+      <div className="cx-head">
+        <h1>Choose your account</h1>
+        <p>Pick a plan and a size. You see exactly what you get before you pay.</p>
+      </div>
+      <CheckoutForm
+        plans={plans} prices={prices} initialPlan={sp.plan} initialSize={Number.isFinite(size) ? size : undefined}
+        email={data.user.email} demoAvailable={(demos ?? 0) === 0}
+        testMode={process.env.PAYMENTS_MODE === "dev" || process.env.NODE_ENV !== "production"}
+      />
     </main>
   );
 }

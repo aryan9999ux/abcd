@@ -31,6 +31,8 @@ export interface AccountRow {
   cycle_no?: number;
   cycle_start_date?: string | null;
   payouts_count?: number;
+  is_demo?: boolean;
+  demo_expires_at?: string | null;
 }
 
 export interface PositionRow {

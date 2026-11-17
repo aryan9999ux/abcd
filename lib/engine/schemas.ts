@@ -20,4 +20,6 @@ export const closePositionSchema = z.object({ accountId: uuid, instrument: z.str
 export const closeAllSchema = z.object({ accountId: uuid });
 export const checkoutSchema = z.object({ planKey: z.string().min(1).max(40), accountSize: z.number().int().positive() });
 
+export const demoSchema = z.object({ planKey: z.string().min(1).max(40) });
+
 export const payoutRequestSchema = z.object({ accountId: uuid });

@@ -46,6 +46,7 @@ interface AccountRow {
   balance: number; day_start_equity: number; trading_days: number; day_start_date: string | null;
   last_trading_date: string | null; breach_reason: string | null; rules: PlanRules; peak_eod_balance: number;
   cycle_no: number; cycle_start_date: string | null; payouts_count: number; purchase_id: string | null;
+  is_demo: boolean; demo_expires_at: string | null;
 }
 interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number; stop_loss: number | null; opened_at: string }
 interface Ctx { sb: Sb; acct: AccountRow; positions: PosRow[]; now: number }
@@ -61,6 +62,7 @@ function toAccount(r: Record<string, unknown>): AccountRow {
     peak_eod_balance: r.peak_eod_balance == null ? num(r.account_size) : num(r.peak_eod_balance),
     cycle_no: num(r.cycle_no ?? 0), cycle_start_date: (r.cycle_start_date as string) ?? null,
     payouts_count: num(r.payouts_count ?? 0), purchase_id: (r.purchase_id as string) ?? null,
+    is_demo: r.is_demo === true, demo_expires_at: (r.demo_expires_at as string) ?? null,
   };
 }
 
@@ -281,7 +283,12 @@ function refOf(req: { underlying: string; segment: InstrumentRef["segment"]; str
   return { underlying: req.underlying, segment: req.segment, strike: req.strike ?? undefined, expiry: req.expiry ?? undefined };
 }
 
+const DEMO_DAYS = 3;
+const DEMO_SIZE = 1_000_000;
+const demoOver = (a: AccountRow, now: number) => a.is_demo && a.demo_expires_at != null && Date.parse(a.demo_expires_at) <= now;
+
 function requireActive(ctx: Ctx) {
+  if (demoOver(ctx.acct, ctx.now)) throw new HttpError(403, "Your 3-day demo has ended. Buy an account to keep trading.");
   if (ctx.acct.status !== "active") throw new HttpError(403, ctx.acct.breach_reason ? `This account is closed: ${ctx.acct.breach_reason}.` : `This account is ${ctx.acct.status}.`);
 }
 
@@ -467,7 +474,7 @@ export async function createCheckout(userId: string, req: CheckoutRequest) {
   const price = must(await sb.from("plan_prices").select("price_inr").eq("plan_key", req.planKey).eq("account_size", req.accountSize).maybeSingle(), "load price");
   if (!price) throw new HttpError(404, "That account size is not available for this plan.");
 
-  const { count } = await sb.from("trading_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId);
+  const { count } = await sb.from("trading_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_demo", false);
   if ((count ?? 0) >= MAX_ACCOUNTS_PER_USER) throw new HttpError(429, `You can hold at most ${MAX_ACCOUNTS_PER_USER} accounts.`);
 
   const amount = num(price.price_inr);
@@ -490,10 +497,37 @@ export async function createCheckout(userId: string, req: CheckoutRequest) {
   return { purchaseId: purchase.id as string, accountId: acct.data.id as string };
 }
 
+/* ---------- demo account: free, 3 days, same rules as the chosen plan, no payouts ---------- */
+
+export async function createDemo(userId: string, planKey: string) {
+  const sb = admin();
+  const plan = must(await sb.from("plans").select("key,evaluation_phases,active,rules").eq("key", planKey).maybeSingle(), "load plan");
+  if (!plan || !plan.active) throw new HttpError(404, "That plan is not available.");
+  const { count } = await sb.from("trading_accounts").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_demo", true);
+  if ((count ?? 0) > 0) throw new HttpError(409, "You have already used your free demo.");
+  const acct = await sb.from("trading_accounts").insert({
+    user_id: userId, plan_key: planKey, account_size: DEMO_SIZE,
+    phase: plan.evaluation_phases === 0 ? "funded" : "phase_1", status: "active",
+    balance: DEMO_SIZE, day_start_equity: DEMO_SIZE, day_start_date: istDate(Date.now()),
+    rules: plan.rules ?? PLAN_RULES[planKey] ?? null, peak_eod_balance: DEMO_SIZE,
+    is_demo: true, demo_expires_at: new Date(Date.now() + DEMO_DAYS * 86_400_000).toISOString(),
+  }).select("id").single();
+  if (acct.error || !acct.data) {
+    if (acct.error?.code === "23505") throw new HttpError(409, "You have already used your free demo.");
+    throw new Error(`create demo: ${acct.error?.message}`);
+  }
+  return { accountId: acct.data.id as string };
+}
+
 /* ---------- tick job ---------- */
 
 async function processAccount(sb: Sb, accountId: string) {
   const ctx = await loadCtx(sb, accountId);
+  if (ctx.acct.status === "active" && demoOver(ctx.acct, ctx.now)) {
+    must(await sb.from("trading_accounts").update({ status: "closed", breach_reason: "Demo ended" }).eq("id", accountId), "end demo");
+    must(await sb.from("orders").update({ status: "cancelled", reject_reason: "Demo ended" }).eq("account_id", accountId).eq("status", "pending"), "cancel pending");
+    return;
+  }
   if (ctx.acct.status !== "active") {
     must(await sb.from("orders").update({ status: "cancelled", reject_reason: "Account is not active" }).eq("account_id", accountId).eq("status", "pending"), "cancel pending");
     return;
@@ -589,6 +623,7 @@ export async function requestPayout(userId: string, accountId: string) {
   return withLock(accountId, async () => {
     const ctx = await loadCtx(admin(), accountId, userId);
     const a = ctx.acct;
+    if (a.is_demo) throw new HttpError(403, "Demo accounts do not earn rewards. Buy an account to get paid.");
     if (a.status !== "active") throw new HttpError(403, "This account is not active.");
     if (a.phase !== "funded") throw new HttpError(422, "Rewards open once the account is funded.");
     const kyc = must(await ctx.sb.from("kyc_status").select("verified").eq("user_id", userId).maybeSingle(), "load kyc");

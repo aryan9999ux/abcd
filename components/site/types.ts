@@ -8,6 +8,7 @@ export interface Plan {
   max_overall_loss_pct: number;
   min_trading_days: number;
   reward_split_pct: number;
+  rules?: import("@/lib/rules").PlanRules | null;
 }
 
 export interface PlanPrice {
