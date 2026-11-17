@@ -20,7 +20,10 @@ import { RiskPanel } from "./StatusStrip";
 import RulesPanel from "./RulesPanel";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
+import "./trading.css";
 import "./dk.css";
+import "./dx.css";
+import { useMedia } from "./useMedia";
 import type { AccountRow, Candle, PlanRow } from "./types";
 import { useContracts } from "./useContracts";
 import { useQuotes } from "./useQuotes";
@@ -51,6 +54,9 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const [screen, setScreen] = useState<Screen>("home");
   const [backTo, setBackTo] = useState<Screen>("watch");
   const [sheet, setSheet] = useState(false);
+  const desk = useMedia("(min-width: 1000px)");
+  const [centre, setCentre] = useState<"chart" | "chain">("chart");
+  const [dock, setDock] = useState<"pos" | "ord" | "his" | "rules">("pos");
   const [q, setQ] = useState("");
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
   const [tf, setTf] = useState(1);
@@ -267,7 +273,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     </div>
   );
 
-  return (
+  const mobileUI = (
     <div className="dk tr">
       <header className="dk-top">
         {screen === "inst" ? (
@@ -297,7 +303,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         </nav>
 
         <main className="dk-main">
-          {account?.is_demo && account.status === "active" && (
+          {account?.is_demo && account.status === "active" && (screen === "home" || screen === "acct") && (
             <div className="dk-note"><span><b>Demo account.</b> Same rules as the real plan, no payouts. {demoText}.</span><Link href="/checkout">Get a real account</Link></div>
           )}
           {account?.status === "breached" && <div className="dk-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><Link href="/checkout">New account</Link></div>}
@@ -521,4 +527,171 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       {toast.node}
     </div>
   );
+
+  const wl = WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase()) || w.n.toLowerCase().includes(q.trim().toLowerCase()));
+  const selSpec = isIndexFO(sel.underlying);
+  const desktopUI = (
+    <div className="dx tr">
+      <header className="dx-top">
+        <Link className="dx-back" href="/dashboard" aria-label="Back to portal">‹ Portal</Link>
+        <svg className="dx-logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#7c4dff" /><path d="M7 21 13 13l4 4 8-9" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <div className="dx-idx">
+          {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => { const c = chg(k); return (
+            <button key={k} onClick={() => { pickUnderlying(k); setCentre("chart"); }}>
+              <small>{k}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
+              <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : ""}</span>
+            </button>
+          ); })}
+        </div>
+        <span className="dx-sp" />
+        <span className={"dx-mkt " + (open ? "on" : "")}>{open ? "Market open" : "Market closed"}</span>
+        {account && (
+          <label className="dx-acct">
+            <span><small>{account.is_demo ? "Demo account" : "Account"}</small><b>{m ? inr(m.equity) : "—"}</b></span>
+            <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value)} aria-label="Trading account">
+              {data.accounts.map((a) => <option key={a.id} value={a.id}>{a.is_demo ? "Demo · " : ""}{plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)}{a.status !== "active" ? ` · ${statusLabel(a.status)}` : ""}</option>)}
+            </select>
+          </label>
+        )}
+        <button className="dx-ico" onClick={toggleTheme} aria-label="Switch theme" title="Theme"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg></button>
+      </header>
+
+      {(account?.is_demo && account.status === "active") || account?.status === "breached" || account?.status === "passed" || account?.status === "closed" || quoteError || data.error ? (
+        <div className="dx-notes">
+          {account?.is_demo && account.status === "active" && <div className="dx-note"><span><b>Demo account.</b> Same rules as the real plan, no payouts. {demoText}.</span><Link href="/checkout">Get a real account</Link></div>}
+          {account?.status === "breached" && <div className="dx-note bad" role="alert"><span><b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.</span><Link href="/checkout">New account</Link></div>}
+          {account?.status === "passed" && <div className="dx-note ok"><span><b>Phase passed.</b> This account no longer takes orders.</span><Link href="/dashboard">Portal</Link></div>}
+          {account?.status === "closed" && account.is_demo && <div className="dx-note"><span><b>Demo ended.</b> Pick a plan to keep trading.</span><Link href="/checkout">Choose a plan</Link></div>}
+          {(quoteError || data.error) && <div className="dx-note" role="status"><span>{quoteError ?? data.error}</span></div>}
+        </div>
+      ) : null}
+
+      <div className="dx-grid">
+        <aside className="dx-panel dx-wl" aria-label="Watchlist">
+          <div className="dx-ph"><h2>Watchlist</h2>{source === "demo" && <span className="dx-tag">Sample prices</span>}</div>
+          <input className="dx-search" placeholder="Search symbol" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols" />
+          <div className="dx-wlist">
+            {wl.map((w, i) => { const c = chg(w.k); return (
+              <div key={w.k}>
+                {(i === 0 || wl[i - 1].fo !== w.fo) && <div className="dx-sep">{w.fo ? "Index F&O" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
+                <div className="dx-wrow" aria-current={sel.underlying === w.k}>
+                  <button className="main" onClick={() => { pickUnderlying(w.k); setCentre("chart"); }}>
+                    <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>
+                    <span className="px"><Px v={c?.px} text={c ? num(c.px) : "—"} className="pxv" /><small className={c ? (c.d >= 0 ? "tr-up" : "tr-down") : ""}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : "—"}</small></span>
+                  </button>
+                  <span className="acts"><button className="b" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Buy" })); }} aria-label={`Buy ${w.k}`}>B</button><button className="s" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Sell" })); }} aria-label={`Sell ${w.k}`}>S</button></span>
+                </div>
+              </div>
+            ); })}
+          </div>
+        </aside>
+
+        <section className="dx-panel dx-centre">
+          <div className="dx-ih">
+            <div className="dx-in"><h1>{nameOf(sel)}</h1><small>{fo ? `Lot ${lot ?? "—"}${sel.expiry ? ` · Expiry ${new Date(sel.expiry + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}` : "NSE · Cash"}</small></div>
+            <div className="dx-iq"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</small>}</div>
+            <div className="dx-tabs" role="tablist">
+              <button role="tab" aria-selected={centre === "chart"} onClick={() => setCentre("chart")}>Chart</button>
+              <button role="tab" aria-selected={centre === "chain"} onClick={() => { if (!selSpec) pickUnderlying("NIFTY"); setCentre("chain"); }}>Option chain</button>
+            </div>
+          </div>
+          <div className="dx-cbody tr-cbody">
+            {centre === "chart" ? (
+              <ChartPanel
+                title={nameOf(sel)}
+                candles={candles}
+                last={ltp}
+                position={curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                pending={pending.filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
+                tf={tf}
+                onTf={setTf}
+                qtyLabel={fo ? "Lots" : "Shares"}
+                disabled={!!blockedReason}
+                disabledText={blockedReason ?? undefined}
+                note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
+                onOrder={chartOrder}
+              />
+            ) : (
+              <OptionChain
+                underlying={selSpec ? sel.underlying : "NIFTY"}
+                spot={spot}
+                expiries={optExpiries}
+                expiry={chainExpiry}
+                lot={spec?.lot ?? null}
+                onExpiry={setChainExp}
+                selected={sel}
+                onSelect={(ref, side) => pick(ref, side)}
+                disabled={!!blockedReason}
+              />
+            )}
+          </div>
+        </section>
+
+        <aside className="dx-right">
+          <OrderTicket inst={sel} lot={lot ?? 1} ltp={ltp} spot={spot} state={ticket} onChange={setTicket} available={m ? m.available : null} disabledReason={blockedReason} busy={busy} message={msg} onSubmit={submitTicket} />
+          {account && (
+            <div className="dx-panel dx-fund">
+              <div className="dx-ph"><h2>Funds</h2></div>
+              <div className="dx-kv"><span>Available margin</span><b>{m ? inr(m.available) : "—"}</b></div>
+              <div className="dx-kv"><span>Margin used</span><b>{m ? inr(m.marginUsed) : "—"}</b></div>
+              <div className="dx-kv"><span>Day P&amp;L</span><b className={dayPl == null ? "" : dayPl >= 0 ? "tr-up" : "tr-down"}>{dayPl == null ? "—" : `${dayPl >= 0 ? "+" : ""}${inr(dayPl)}`}</b></div>
+              <div className="dx-kv"><span>Open P&amp;L</span><b className={openPl >= 0 ? "tr-up" : "tr-down"}>{inr(openPl)}</b></div>
+            </div>
+          )}
+        </aside>
+
+        <section className="dx-panel dx-dock">
+          <div className="dx-dtabs" role="tablist">
+            <button role="tab" aria-selected={dock === "pos"} onClick={() => setDock("pos")}>Positions{accPositions.length ? <i>{accPositions.length}</i> : null}</button>
+            <button role="tab" aria-selected={dock === "ord"} onClick={() => setDock("ord")}>Orders{pendingCount ? <i>{pendingCount}</i> : null}</button>
+            <button role="tab" aria-selected={dock === "his"} onClick={() => setDock("his")}>Trades</button>
+            <button role="tab" aria-selected={dock === "rules"} onClick={() => setDock("rules")}>Rules and limits</button>
+            <span className="dx-sp" />
+            {dock === "pos" && <><span className={"dx-total " + (openPl >= 0 ? "tr-up" : "tr-down")}>Open P&amp;L {inr(openPl)}</span><button className="dx-btn" onClick={squareAll} disabled={!accPositions.length || !active}>{confirmAll ? "Click again to confirm" : "Exit all"}</button></>}
+          </div>
+          <div className="dx-dbody">
+            {dock === "pos" && (
+              <table><thead><tr><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Avg price</th><th>LTP</th><th>P&amp;L</th><th /></tr></thead><tbody>
+                {data.loading && <tr><td colSpan={7} className="dx-empty">Loading positions…</td></tr>}
+                {!data.loading && !accPositions.length && <tr><td colSpan={7} className="dx-empty">No open positions. Pick a symbol on the left, or click the chart, to place a trade.</td></tr>}
+                {accPositions.map((p) => { const pl = positionPnl(p, spots), px = livePrice(p.instrument, spots); return (
+                  <tr key={p.id}><td className="l"><button className="dx-lnk" onClick={() => pick(parseInstrumentKey(p.instrument))}>{nameOfKey(p.instrument)}</button></td>
+                    <td><span className={"dx-side " + (p.side === "Buy" ? "b" : "s")}>{p.side}</span></td><td className="tr-mono">{p.qty}</td><td className="tr-mono">{num(p.avg_price)}</td>
+                    <td className="tr-mono"><Px v={px ?? undefined} text={px == null ? "—" : num(px)} /></td>
+                    <td className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</td>
+                    <td><button className="dx-btn sm" disabled={!active} onClick={() => closePosition(p.instrument)}>Exit</button></td></tr>
+                ); })}
+              </tbody></table>
+            )}
+            {dock === "ord" && (
+              <table><thead><tr><th className="l">Instrument</th><th>Side</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th><th /></tr></thead><tbody>
+                {!acctOrders.length && <tr><td colSpan={7} className="dx-empty">No orders yet.</td></tr>}
+                {acctOrders.map((o) => (
+                  <tr key={o.id}><td className="l">{nameOfKey(o.instrument)}</td><td><span className={"dx-side " + (o.side === "Buy" ? "b" : "s")}>{o.side}</span></td><td>{o.order_type}</td><td className="tr-mono">{o.qty}</td>
+                    <td className="tr-mono">{o.price == null ? "Market" : num(o.price)}</td><td title={o.reject_reason ?? undefined}><span className={"dk-st " + o.status}>{o.status}</span></td>
+                    <td>{o.status === "pending" && <button className="dx-btn sm" onClick={() => cancelOrder(o.id)}>Cancel</button>}</td></tr>
+                ))}
+              </tbody></table>
+            )}
+            {dock === "his" && (
+              <table><thead><tr><th className="l">Time</th><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Price</th><th>Realised</th></tr></thead><tbody>
+                {!acctTrades.length && <tr><td colSpan={6} className="dx-empty">No trades yet.</td></tr>}
+                {acctTrades.slice(0, 40).map((t) => (
+                  <tr key={t.id}><td className="l tr-mono" title={dateTime(t.executed_at)}>{timeOnly(t.executed_at)}</td><td className="l">{nameOfKey(t.instrument)}</td><td><span className={"dx-side " + (t.side === "Buy" ? "b" : "s")}>{t.side}</span></td>
+                    <td className="tr-mono">{t.qty}</td><td className="tr-mono">{num(t.price)}</td><td className={"tr-mono " + (t.realized_pnl >= 0 ? "tr-up" : "tr-down")}>{t.realized_pnl === 0 ? "—" : inr(t.realized_pnl)}</td></tr>
+                ))}
+              </tbody></table>
+            )}
+            {dock === "rules" && account && m && (
+              <div className="dx-rules"><RiskPanel account={account} m={m} openCount={accPositions.length} /><RulesPanel account={account} m={m} openCount={accPositions.length} /></div>
+            )}
+          </div>
+        </section>
+      </div>
+      {toast.node}
+    </div>
+  );
+
+  if (desk === null) return <div className="dk tr" />;
+  return desk ? desktopUI : mobileUI;
 }

@@ -26,8 +26,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   useEffect(() => setMenu(false), [path]);
 
   const needsKyc = !kycVerified;
-  const pp = path.replace(/^\/preview-tmp/, "");
-  const active = (href: string) => pp === href || (href !== "/dashboard" && pp.startsWith(href));
+  const active = (href: string) => path === href || (href !== "/dashboard" && path.startsWith(href));
   const initial = (user.name || "A").trim().slice(0, 1).toUpperCase();
 
   function toggleTheme() {

@@ -118,3 +118,9 @@
   .dk-ico.me { display: none; }
 }
 @media (max-width: 420px) { .dk-big { font-size: 1.8rem; } .dk-quick { grid-template-columns: 1fr 1fr; } .dk-mkt { display: none; } }
+
+/* phones: the chain keeps strike, CE and PE; IV and delta live on desktop */
+@media (max-width: 999px) {
+  .dk-chainwrap table th:nth-child(1), .dk-chainwrap table td:nth-child(1), .dk-chainwrap table th:nth-child(2), .dk-chainwrap table td:nth-child(2),
+  .dk-chainwrap table th:nth-child(6), .dk-chainwrap table td:nth-child(6), .dk-chainwrap table th:nth-child(7), .dk-chainwrap table td:nth-child(7) { display: none; }
+}
