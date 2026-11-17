@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
+import Chat from "@/components/chat/Chat";
 import { Icon } from "./ui";
 import { usePortal } from "./PortalProvider";
 import "./portal.css";
@@ -84,6 +85,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           )}
         </header>
         <main className="pt-page">{children}</main>
+        <Chat endpoint="/api/ai/support" popup={false} title="Riya, your support" hint="Knows your accounts" greeting="Hi! Ask me anything about your accounts, payouts or payments." />
       </div>
 
       <nav className="pt-tabs" aria-label="Portal">
