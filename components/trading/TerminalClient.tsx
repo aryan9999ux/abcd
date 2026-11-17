@@ -14,9 +14,11 @@ import { Meter } from "./Meter";
 import { accountMetrics, livePrice, positionPnl } from "./metrics";
 import NoAccounts from "./NoAccounts";
 import OptionChain from "./OptionChain";
-import StatusStrip, { RiskPanel } from "./StatusStrip";
+import StatusStrip from "./StatusStrip";
+import RulesPanel from "./RulesPanel";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
+import "./tv.css";
 import type { AccountRow, Candle, PlanRow } from "./types";
 import { useContracts } from "./useContracts";
 import { useQuotes } from "./useQuotes";
@@ -27,11 +29,12 @@ interface Props {
   initialAccounts: AccountRow[];
   plans: PlanRow[];
   initialAccountId: string | null;
+  fromPrice?: number | null;
 }
 
-type Tab = "pos" | "ord" | "his";
+type View = "trade" | "chain" | "pos" | "ord" | "pnl";
 
-export default function TerminalClient({ initialAccounts, plans, initialAccountId }: Props) {
+export default function TerminalClient({ initialAccounts, plans, initialAccountId, fromPrice }: Props) {
   const [accountId, setAccountId] = useState<string | null>(initialAccountId);
   const data = useTraderData(initialAccounts, accountId);
   const contracts = useContracts();
@@ -39,11 +42,11 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   const [sel, setSel] = useState<InstrumentRef>({ underlying: "NIFTY", segment: "FUT" });
   const [chainExp, setChainExp] = useState("");
-  const [view, setView] = useState<"chart" | "chain">("chart");
+  const [view, setView] = useState<View>("trade");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [q, setQ] = useState("");
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
   const [tf, setTf] = useState(1);
-  const [tab, setTab] = useState<Tab>("pos");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
@@ -130,6 +133,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   function pick(ref: InstrumentRef, side?: Side) {
     setSel(ref);
+    setPickerOpen(false);
     setTicket((t) => ({ ...t, price: "", stopLoss: "", ...(side ? { side } : {}) }));
     setMsg(null);
   }
@@ -201,7 +205,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   }
 
   if (data.accounts.length === 0) {
-    return <Shell active="terminal"><NoAccounts what="trading terminal" /></Shell>;
+    return <Shell active="terminal"><NoAccounts what="trading terminal" fromPrice={fromPrice} /></Shell>;
   }
 
   const slot = (
@@ -209,7 +213,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value)} aria-label="Trading account">
         {data.accounts.map((a) => (
           <option key={a.id} value={a.id}>
-            {plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)} · {phaseLabel(a.phase)}{a.status !== "active" ? ` · ${statusLabel(a.status)}` : ""}
+            {a.is_demo ? "Demo · " : ""}{plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)} · {phaseLabel(a.phase)}{a.status !== "active" ? ` · ${statusLabel(a.status)}` : ""}
           </option>
         ))}
       </select>
@@ -218,8 +222,24 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   const optExpiries = spec?.optExpiries ?? [];
   const chainExpiry = optExpiries.includes(chainExp) ? chainExp : optExpiries[0] ?? "";
-  const acctOrders = data.orders.filter((o) => o.account_id === accountId).slice(0, 30);
+  const acctOrders = data.orders.filter((o) => o.account_id === accountId).slice(0, 40);
+  const acctTrades = data.trades.filter((t) => t.account_id === accountId);
   const noPrices = Object.keys(spots).length === 0;
+  const pendingCount = data.orders.filter((o) => o.account_id === accountId && o.status === "pending").length;
+  const active = account?.status === "active";
+  const dayPl = m && account ? m.equity - account.day_start_equity : null;
+  const demoLeft = account?.is_demo && account.demo_expires_at ? Math.max(0, new Date(account.demo_expires_at).getTime() - Date.now()) : null;
+  const demoText = demoLeft == null ? "" : demoLeft > 86_400_000 ? `${Math.ceil(demoLeft / 86_400_000)} days left` : `${Math.max(1, Math.ceil(demoLeft / 3_600_000))} hours left`;
+
+  const goTrade = (ref: InstrumentRef, side?: Side) => { pick(ref, side); setView("trade"); };
+
+  const tabs: [View, string, string?][] = [
+    ["trade", "Trade"],
+    ["chain", "Option chain"],
+    ["pos", "Positions", accPositions.length ? String(accPositions.length) : undefined],
+    ["ord", "Orders", pendingCount ? String(pendingCount) : undefined],
+    ["pnl", "P&L and rules"],
+  ];
 
   return (
     <Shell active="terminal" accountId={accountId} slot={slot} ticker={(
@@ -227,7 +247,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => {
           const px = spots[k], pv = prev[k], d = px != null && pv != null ? px - pv : null;
           return (
-            <button key={k} onClick={() => pickUnderlying(k)}>
+            <button key={k} onClick={() => { pickUnderlying(k); setView("trade"); }}>
               <small>{k}</small>
               <Px v={px} className="tr-mono" text={px == null ? "—" : num(px)} />
               <span className={"tr-mono " + (d == null ? "" : d >= 0 ? "tr-up" : "tr-down")}>{d == null || pv == null ? "" : `${d >= 0 ? "▲" : "▼"} ${Math.abs((d / pv) * 100).toFixed(2)}%`}</span>
@@ -236,127 +256,171 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         })}
       </div>
     )}>
-      {account?.status === "breached" && (
-        <div className="tr-banner bad" role="alert">
-          <b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.
-          <Link className="tr-btn sm" href="/checkout">Buy a new account</Link>
-        </div>
-      )}
-      {account?.status === "passed" && (
-        <div className="tr-banner ok"><b>Phase passed.</b> This account no longer accepts new orders.<Link className="tr-btn sm" href="/dashboard">Go to dashboard</Link></div>
-      )}
-      {(quoteError || data.error) && <div className="tr-banner" role="status">{quoteError ?? data.error}</div>}
-
-      {account && <StatusStrip account={account} m={m} openCount={accPositions.length} />}
-
-      <div className="tr-grid">
-        <aside className="tr-glass tr-wlp" aria-label="Watchlist">
-          <div className="tr-wlhead">
-            <span className="tr-eyebrow">Watchlist {source === "demo" && <span className="tr-pill">Dev demo</span>}</span>
-            <input className="tr-search" placeholder="Search symbol" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search watchlist" />
+      <div className="tv">
+        <label className="tr-f tv-acct">
+          <select value={accountId ?? ""} onChange={(e) => setAccountId(e.target.value)} aria-label="Trading account">
+            {data.accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.is_demo ? "Demo · " : ""}{plans.find((p) => p.key === a.plan_key)?.name ?? a.plan_key} · {inr(a.account_size)} · {phaseLabel(a.phase)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {account?.is_demo && account.status === "active" && (
+          <div className="tr-banner" role="status"><b>Demo account.</b> Same rules as the real plan, with no payouts. {demoText}.<Link className="tr-btn sm" href="/checkout">Get a real account</Link></div>
+        )}
+        {account?.status === "breached" && (
+          <div className="tr-banner bad" role="alert">
+            <b>Account closed.</b> {account.breach_reason ?? "A loss limit was reached."} Open positions were squared off.
+            <Link className="tr-btn sm" href="/checkout">Buy a new account</Link>
           </div>
-          <div className="tr-wl">
-            {WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase())).map((w, i, arr) => {
-              const px = spots[w.k], pv = prev[w.k];
-              const d = px != null && pv != null ? px - pv : null;
-              return (
-                <div key={w.k}>
-                  {(i === 0 || arr[i - 1].fo !== w.fo) && <div className="tr-sep">{w.fo ? "Index F&O" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
-                  <div className="tr-wrow" aria-current={sel.underlying === w.k}>
-                    <button className="main" onClick={() => pickUnderlying(w.k)}>
-                      <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : "NSE · Cash"}</small></span>
-                      <span className="px"><Px v={px} text={px == null ? "—" : num(px)} className="pxv" /><small className={d == null ? "" : d >= 0 ? "tr-up" : "tr-down"}>{d == null || pv == null ? "—" : `${d >= 0 ? "+" : ""}${num(d)} (${((d / pv) * 100).toFixed(2)}%)`}</small></span>
-                    </button>
-                    <span className="acts">
-                      <button className="b" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Buy" })); }} aria-label={`Buy ${w.k}`}>B</button>
-                      <button className="s" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Sell" })); }} aria-label={`Sell ${w.k}`}>S</button>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </aside>
+        )}
+        {account?.status === "passed" && (
+          <div className="tr-banner ok"><b>Phase passed.</b> This account no longer accepts new orders.<Link className="tr-btn sm" href="/dashboard">Go to dashboard</Link></div>
+        )}
+        {account?.status === "closed" && account.is_demo && (
+          <div className="tr-banner"><b>Demo ended.</b> Pick a plan to keep trading with real payouts.<Link className="tr-btn sm" href="/checkout">Choose a plan</Link></div>
+        )}
+        {(quoteError || data.error) && <div className="tr-banner" role="status">{quoteError ?? data.error}</div>}
 
-        <section className="tr-glass tr-centre">
-          <div className="tr-ctabs" role="tablist">
-            <button role="tab" aria-selected={view === "chart"} onClick={() => setView("chart")}>Chart</button>
-            <button role="tab" aria-selected={view === "chain"} onClick={() => setView("chain")}>Option chain</button>
-            <span className="tr-sp" />
-            <div className="tr-quote">
-              <b>{nameOf(sel)}</b>
-              <span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>
-              {selChg != null && selPrev != null && <span className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</span>}
-            </div>
-          </div>
-          <div className="tr-cbody">
-            {view === "chart" ? (
-              <ChartPanel
-                title={nameOf(sel)}
-                candles={candles}
-                last={ltp}
-                position={curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
-                pending={pending.filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
-                tf={tf}
-                onTf={setTf}
-                qtyLabel={fo ? "Lots" : "Shares"}
-                disabled={!!blockedReason}
-                disabledText={blockedReason ?? undefined}
-                note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
-                onOrder={chartOrder}
-              />
-            ) : (
-              <OptionChain
-                underlying={sel.underlying}
-                spot={spot}
-                expiries={isIndexFO(sel.underlying) ? optExpiries : []}
-                expiry={chainExpiry}
-                lot={spec?.lot ?? null}
-                onExpiry={setChainExp}
-                selected={sel}
-                onSelect={(ref, side) => pick(ref, side)}
-                disabled={!!blockedReason}
-              />
-            )}
-          </div>
-        </section>
+        {account && <StatusStrip account={account} m={m} openCount={accPositions.length} />}
 
-        <section className="tr-glass tr-bookwrap">
-          <div className="tr-glass tr-book">
-          <div className="tr-tabs" role="tablist">
-            <button className="tab" role="tab" aria-selected={tab === "pos"} onClick={() => setTab("pos")}>Positions{accPositions.length ? ` (${accPositions.length})` : ""}</button>
-            <button className="tab" role="tab" aria-selected={tab === "ord"} onClick={() => setTab("ord")}>Orders</button>
-            <button className="tab" role="tab" aria-selected={tab === "his"} onClick={() => setTab("his")}>Trades</button>
-            <span className="tr-sp" />
-            <button className="tr-btn sm" onClick={squareAll} disabled={!accPositions.length || account?.status !== "active"}>
-              {confirmAll ? "Confirm square off" : "Square off all"}
+        <nav className="tv-tabs" aria-label="Terminal sections">
+          {tabs.map(([k, label, badge]) => (
+            <button key={k} aria-current={view === k ? "page" : undefined} onClick={() => setView(k)}>
+              {label}{badge && <i>{badge}</i>}
             </button>
+          ))}
+        </nav>
+
+        {view === "trade" && (
+          <div className="tv-trade">
+            <section className="tr-glass tv-chart">
+              <div className="tv-bar">
+                <div className="tv-pick">
+                  <button className="tv-sym" onClick={() => setPickerOpen((o) => !o)} aria-expanded={pickerOpen} aria-haspopup="listbox">
+                    <b>{nameOf(sel)}</b><span aria-hidden="true">▾</span>
+                  </button>
+                  {pickerOpen && (
+                    <div className="tv-menu" role="listbox" aria-label="Choose an instrument">
+                      <input className="tr-search" autoFocus placeholder="Search symbol" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols" />
+                      <div className="tv-list">
+                        {WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase())).map((w, i, arr) => {
+                          const px = spots[w.k], pv = prev[w.k];
+                          const d = px != null && pv != null ? px - pv : null;
+                          return (
+                            <div key={w.k}>
+                              {(i === 0 || arr[i - 1].fo !== w.fo) && <div className="tr-sep">{w.fo ? "Index futures and options" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
+                              <button role="option" aria-selected={sel.underlying === w.k} className="tv-opt" onClick={() => { pickUnderlying(w.k); setQ(""); }}>
+                                <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : "NSE · Cash"}</small></span>
+                                <span className="px"><Px v={px} text={px == null ? "—" : num(px)} className="pxv" /><small className={d == null ? "" : d >= 0 ? "tr-up" : "tr-down"}>{d == null || pv == null ? "—" : `${d >= 0 ? "+" : ""}${((d / pv) * 100).toFixed(2)}%`}</small></span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="tr-quote">
+                  <span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>
+                  {selChg != null && selPrev != null && <span className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</span>}
+                  {source === "demo" && <span className="tr-pill">Sample prices</span>}
+                </div>
+              </div>
+              <div className="tr-cbody">
+                <ChartPanel
+                  title={nameOf(sel)}
+                  candles={candles}
+                  last={ltp}
+                  position={curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                  pending={pending.filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
+                  tf={tf}
+                  onTf={setTf}
+                  qtyLabel={fo ? "Lots" : "Shares"}
+                  disabled={!!blockedReason}
+                  disabledText={blockedReason ?? undefined}
+                  note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
+                  onOrder={chartOrder}
+                />
+              </div>
+            </section>
+            <aside className="tv-side">
+              <OrderTicket
+                inst={sel}
+                lot={lot ?? 1}
+                ltp={ltp}
+                spot={spot}
+                state={ticket}
+                onChange={setTicket}
+                available={m ? m.available : null}
+                disabledReason={blockedReason}
+                busy={busy}
+                message={msg}
+                onSubmit={submitTicket}
+              />
+              {curPos && (
+                <div className="tr-glass tv-cur">
+                  <div><small>Open position</small><b>{curPos.side} {curPos.qty} · avg {num(curPos.avg_price)}</b></div>
+                  <button className="tr-btn sm" disabled={!active} onClick={() => closePosition(curPos.instrument)}>Exit</button>
+                </div>
+              )}
+            </aside>
           </div>
-          <div className="tr-scroll">
-            {tab === "pos" && (
+        )}
+
+        {view === "chain" && (
+          <section className="tr-glass tv-page tv-chain">
+            <OptionChain
+              underlying={sel.underlying}
+              spot={spot}
+              expiries={isIndexFO(sel.underlying) ? optExpiries : []}
+              expiry={chainExpiry}
+              lot={spec?.lot ?? null}
+              onExpiry={setChainExp}
+              selected={sel}
+              onSelect={(ref, side) => goTrade(ref, side)}
+              disabled={!!blockedReason}
+            />
+          </section>
+        )}
+
+        {view === "pos" && (
+          <section className="tr-glass tv-page">
+            <div className="tv-head">
+              <h2>Open positions</h2>
+              <button className="tr-btn sm" onClick={squareAll} disabled={!accPositions.length || !active}>{confirmAll ? "Tap again to confirm" : "Exit all"}</button>
+            </div>
+            <div className="tr-scroll">
               <table>
                 <thead><tr><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Avg</th><th>LTP</th><th>P&amp;L</th><th /></tr></thead>
                 <tbody>
                   {data.loading && <tr><td colSpan={7} className="tr-empty">Loading positions…</td></tr>}
-                  {!data.loading && !accPositions.length && <tr><td colSpan={7} className="tr-empty">No open positions. Click the chart or the option chain to place a trade.</td></tr>}
+                  {!data.loading && !accPositions.length && <tr><td colSpan={7} className="tr-empty">No open positions. Use Trade or Option chain to place one.</td></tr>}
                   {accPositions.map((p) => {
                     const pl = positionPnl(p, spots), px = livePrice(p.instrument, spots);
                     return (
                       <tr key={p.id}>
-                        <td className="l"><button className="tr-btn sm" onClick={() => pick(parseInstrumentKey(p.instrument))} style={{ border: 0, background: "none", padding: 0 }}>{nameOfKey(p.instrument)}</button></td>
+                        <td className="l"><button className="tv-link" onClick={() => goTrade(parseInstrumentKey(p.instrument))}>{nameOfKey(p.instrument)}</button></td>
                         <td>{p.side}</td>
                         <td className="tr-mono">{p.qty}</td>
                         <td className="tr-mono">{num(p.avg_price)}</td>
                         <td className="tr-mono"><Px v={px ?? undefined} text={px == null ? "—" : num(px)} /></td>
                         <td className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</td>
-                        <td><button className="tr-btn sm" disabled={account?.status !== "active"} onClick={() => closePosition(p.instrument)}>Exit</button></td>
+                        <td><button className="tr-btn sm" disabled={!active} onClick={() => closePosition(p.instrument)}>Exit</button></td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-            )}
-            {tab === "ord" && (
+            </div>
+          </section>
+        )}
+
+        {view === "ord" && (
+          <section className="tr-glass tv-page">
+            <div className="tv-head"><h2>Orders</h2></div>
+            <div className="tr-scroll">
               <table>
                 <thead><tr><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Price</th><th>Type</th><th>Status</th><th /></tr></thead>
                 <tbody>
@@ -374,49 +438,50 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   ))}
                 </tbody>
               </table>
-            )}
-            {tab === "his" && (
-              <table>
-                <thead><tr><th className="l">Time</th><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Price</th><th>Realised</th></tr></thead>
-                <tbody>
-                  {!data.trades.length && <tr><td colSpan={6} className="tr-empty">No trades yet.</td></tr>}
-                  {data.trades.slice(0, 30).map((t) => (
-                    <tr key={t.id}>
-                      <td className="l tr-mono" title={dateTime(t.executed_at)}>{timeOnly(t.executed_at)}</td>
-                      <td className="l">{nameOfKey(t.instrument)}</td>
-                      <td>{t.side}</td>
-                      <td className="tr-mono">{t.qty}</td>
-                      <td className="tr-mono">{num(t.price)}</td>
-                      <td className={"tr-mono " + (t.realized_pnl >= 0 ? "tr-up" : "tr-down")}>{t.realized_pnl === 0 ? "—" : inr(t.realized_pnl)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-        </section>
+            </div>
+          </section>
+        )}
 
-        <aside className="tr-side">
-          <OrderTicket
-            inst={sel}
-            lot={lot ?? 1}
-            ltp={ltp}
-            spot={spot}
-            state={ticket}
-            onChange={setTicket}
-            available={m ? m.available : null}
-            disabledReason={blockedReason}
-            busy={busy}
-            message={msg}
-            onSubmit={submitTicket}
-          />
-          {account && <RiskPanel account={account} m={m} openCount={accPositions.length} />}
-        </aside>
+        {view === "pnl" && account && (
+          <div className="tv-pnl">
+            <section className="tr-glass tv-page">
+              <div className="tv-head"><h2>Today</h2></div>
+              <div className="tv-figs">
+                <div><small>Day P&amp;L</small><b className={dayPl == null ? "" : dayPl >= 0 ? "tr-up" : "tr-down"}>{dayPl == null ? "—" : inr(dayPl)}</b></div>
+                <div><small>Equity</small><b>{m ? inr(m.equity) : "—"}</b></div>
+                <div><small>Balance</small><b>{inr(account.balance)}</b></div>
+                <div><small>Open positions</small><b>{accPositions.length}</b></div>
+              </div>
+              <div className="tv-head"><h2>Recent trades</h2></div>
+              <div className="tr-scroll">
+                <table>
+                  <thead><tr><th className="l">Time</th><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Price</th><th>Realised</th></tr></thead>
+                  <tbody>
+                    {!acctTrades.length && <tr><td colSpan={6} className="tr-empty">No trades yet.</td></tr>}
+                    {acctTrades.slice(0, 40).map((t) => (
+                      <tr key={t.id}>
+                        <td className="l tr-mono" title={dateTime(t.executed_at)}>{timeOnly(t.executed_at)}</td>
+                        <td className="l">{nameOfKey(t.instrument)}</td>
+                        <td>{t.side}</td>
+                        <td className="tr-mono">{t.qty}</td>
+                        <td className="tr-mono">{num(t.price)}</td>
+                        <td className={"tr-mono " + (t.realized_pnl >= 0 ? "tr-up" : "tr-down")}>{t.realized_pnl === 0 ? "—" : inr(t.realized_pnl)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+            <div className="tv-rules">
+              {m && <RulesPanel account={account} m={m} openCount={accPositions.length} />}
+            </div>
+          </div>
+        )}
+
+        <p className="tr-hint tr-foot">
+          Simulated trading account. Stocks use {STOCK_LEVERAGE}× intraday leverage; futures and short options use a sample margin model.
+        </p>
       </div>
-      <p className="tr-hint tr-foot">
-        Simulated trading account. Stocks use {5}× intraday leverage; futures and short options use a sample margin model. Prices are for the simulated account only.
-      </p>
       {toast.node}
     </Shell>
   );

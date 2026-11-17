@@ -6,6 +6,7 @@ export interface TradingInitial {
   accounts: AccountRow[];
   plans: PlanRow[];
   selectedId: string | null;
+  fromPrice: number | null;
 }
 
 /**
@@ -17,10 +18,12 @@ export async function loadTradingInitial(path: "/dashboard" | "/terminal", accou
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
 
-  const [acc, plans] = await Promise.all([
+  const [acc, plans, prices] = await Promise.all([
     sb.from("trading_accounts").select("*").order("created_at", { ascending: true }),
     sb.from("plans").select("*"),
+    sb.from("plan_prices").select("price_inr").order("price_inr", { ascending: true }).limit(1),
   ]);
+  const fromPrice = prices.data?.[0] ? Number(prices.data[0].price_inr) : null;
 
   const accounts = ((acc.data ?? []) as AccountRow[]).map((a) => ({
     ...a,
@@ -39,5 +42,5 @@ export async function loadTradingInitial(path: "/dashboard" | "/terminal", accou
 
   const requested = accounts.find((a) => a.id === accountParam);
   const preferred = requested ?? [...accounts].reverse().find((a) => a.status === "active") ?? accounts[accounts.length - 1];
-  return { accounts, plans: planRows, selectedId: preferred?.id ?? null };
+  return { accounts, plans: planRows, selectedId: preferred?.id ?? null, fromPrice };
 }

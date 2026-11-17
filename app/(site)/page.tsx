@@ -104,6 +104,10 @@ export default async function Home() {
           <p>One fee. No monthly charges, no hidden costs. Pick a size and the prices update.</p>
         </div>
         <Tiers plans={orderedPlans} prices={prices} />
+        <div className="lx-demo" data-reveal>
+          <p><b>Not sure yet?</b> Try the terminal free for 3 days on a {sizeLabel(topSize)} demo account. No card needed.</p>
+          <Link className="btn" href="/demo">Start free demo</Link>
+        </div>
       </section>
 
       <section className="blk" id="for">

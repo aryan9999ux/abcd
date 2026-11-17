@@ -8,5 +8,5 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ account?: string }> }) {
   const { account } = await searchParams;
   const init = await loadTradingInitial("/dashboard", account);
-  return <DashboardClient initialAccounts={init.accounts} plans={init.plans} initialAccountId={init.selectedId} />;
+  return <DashboardClient initialAccounts={init.accounts} plans={init.plans} initialAccountId={init.selectedId} fromPrice={init.fromPrice} />;
 }
