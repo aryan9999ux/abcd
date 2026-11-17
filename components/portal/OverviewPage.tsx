@@ -100,9 +100,9 @@ export default function OverviewPage() {
         <Kpi label="Verification" value={kycVerified ? "Verified" : kyc?.status === "pending" ? "In review" : "Not done"} tone={kycVerified ? "up" : undefined} sub={kycVerified ? "You can request payouts" : "Needed before payouts"} />
       </div>
 
+      <div className="pt-ch pt-sec"><h2>Your accounts</h2><Link className="pt-link" href="/accounts">See all</Link></div>
       <div className="pt-grid2">
         <section className="pt-stack">
-          <div className="pt-ch" style={{ marginBottom: 0 }}><h2>Your accounts</h2><Link className="pt-link" href="/accounts">See all</Link></div>
           {accounts.slice().reverse().slice(0, 3).map((a) => <AccountCard key={a.id} a={a} plan={plans.find((p) => p.key === a.plan_key)} m={metrics[a.id] ?? null} />)}
         </section>
         <aside className="pt-stack">
