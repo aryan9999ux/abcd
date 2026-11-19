@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import "./checkout.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -54,7 +55,7 @@ export default function DemoForm({ plans, initialPlan, existing }: { plans: Plan
         </ul>
         <p className="cx-note">Demo accounts do not earn payouts. You get one demo per person. No card needed.</p>
         {error && <p className="cx-err" role="alert">{error}</p>}
-        <button className="btn primary" type="button" onClick={start} disabled={busy}>{busy ? "Starting…" : "Start free demo"}</button>
+        <button className="btn primary" type="button" onClick={start} disabled={busy}>{busy ? <><Spin />Starting…</> : "Start free demo"}</button>
         <Link className="cx-note" href={`/checkout?plan=${plan.key}`}>Or buy a real account</Link>
       </aside>
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import "./checkout.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -106,7 +107,7 @@ export default function CheckoutForm({
         {error && <p className="cx-err" role="alert">{error}</p>}
         <button className="btn primary" type="button" onClick={openPay}>{`Pay ${inr(total)} by UPI`}</button>
         {email && <p className="cx-note">Account for {email}</p>}
-        {testMode && <p className="cx-note"><button type="button" className="cx-link" onClick={testBuy} disabled={busy}>{busy ? "Opening…" : "Test mode: open account without paying"}</button></p>}
+        {testMode && <p className="cx-note"><button type="button" className="cx-link" onClick={testBuy} disabled={busy}>{busy ? <><Spin />Opening…</> : "Test mode: open account without paying"}</button></p>}
       </aside>
       {paying && <PayPanel pay={pay} amount={total} planKey={plan.key} size={active.account_size} label={`${plan.name}, ${sizeLabel(active.account_size)}`} onClose={() => setPaying(false)} />}
     </div>

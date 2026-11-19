@@ -1,4 +1,5 @@
 "use client";
+import { Spin, Splash } from "@/components/ui/Spin";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -11,6 +12,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [entering, setEntering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const target = safeNext(next);
@@ -37,6 +39,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
         });
         if (err) return setError(err.message);
         if (data.session) {
+          setEntering(true);
           router.push(target);
           router.refresh();
         } else {
@@ -45,6 +48,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
       } else {
         const { error: err } = await db.auth.signInWithPassword({ email: email.trim(), password });
         if (err) return setError(err.message);
+        setEntering(true);
         router.push(target);
         router.refresh();
       }
@@ -58,6 +62,8 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
   const other = `${signup ? "/login" : "/signup"}${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (
+    <>
+    {entering && <Splash text={signup ? "Setting up your account…" : "Signing you in…"} />}
     <form className="glass card narrow view" onSubmit={onSubmit} noValidate>
       <div>
         <span className="eyebrow">{signup ? "Create account" : "Welcome back"}</span>
@@ -80,7 +86,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
       {error && <p className="msg err" role="alert">{error}</p>}
       {notice && <p className="msg" role="status">{notice}</p>}
       <button className="btn primary" type="submit" disabled={busy}>
-        {busy ? "Please wait" : signup ? "Create account" : "Log in"}
+        {busy ? <><Spin />{signup ? "Creating account…" : "Logging in…"}</> : signup ? "Create account" : "Log in"}
       </button>
       <p className="muted" style={{ fontSize: ".84rem" }}>
         {signup ? "Already have an account? " : "New here? "}
@@ -92,5 +98,6 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
         </p>
       )}
     </form>
+    </>
   );
 }

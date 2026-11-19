@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import { useMemo, useState } from "react";
 
 interface Arch { name: string; share: number; winRate: number; rr: number; tradesPerDay: number; riskPct: number }
@@ -72,7 +73,7 @@ export function SimulatorClient({ plans, archetypes }: { plans: PlanRow[]; arche
         </div>
         <label>Rules (JSON)<br /><textarea value={rulesText} onChange={(e) => setRulesText(e.target.value)} rows={16} style={{ width: "100%", fontFamily: "var(--mono, monospace)", fontSize: ".82rem" }} /></label>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button className="btn primary" disabled={busy} onClick={run}>{busy ? "Working…" : "Run simulation"}</button>
+          <button className="btn primary" disabled={busy} onClick={run}>{busy ? <><Spin />Working…</> : "Run simulation"}</button>
           <button className="btn" disabled={busy} onClick={save}>Save rules to this plan</button>
           {msg && <span className="muted">{msg}</span>}
         </div>

@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { browserClient } from "@/lib/supabase/browser";
@@ -57,7 +58,7 @@ function Eligibility({ a }: { a: AccountRow }) {
       </div>
       <div className="pt-next">
         <p>You would receive <b>{inr(payable)}</b> ({r.payout.splitPct}% of your profit).</p>
-        <button className="pt-btn primary" disabled={!ready || busy} onClick={request}>{busy ? "Sending…" : "Request payout"}</button>
+        <button className="pt-btn primary" disabled={!ready || busy} onClick={request}>{busy ? <><Spin />Sending…</> : "Request payout"}</button>
       </div>
       {msg && <p className={"pt-msg " + (msg.err ? "err" : "ok")} role="status" style={{ marginTop: 12 }}>{msg.t}</p>}
     </section>

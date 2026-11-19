@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import Link from "next/link";
 import { useState } from "react";
 import { inr } from "./format";
@@ -65,7 +66,7 @@ export default function PayPanel({ pay, amount, planKey, size, label, onClose }:
                 <label htmlFor="utr">UTR / reference number</label>
                 <input id="utr" inputMode="numeric" autoComplete="off" maxLength={12} value={utr} onChange={(e) => setUtr(e.target.value.replace(/\D/g, ""))} placeholder="12 digits" />
                 {err && <p className="cx-err" role="alert">{err}</p>}
-                <button className="btn primary" disabled={busy || utr.length !== 12 || !pay.qrUrl}>{busy ? "Sending…" : "I have paid"}</button>
+                <button className="btn primary" disabled={busy || utr.length !== 12 || !pay.qrUrl}>{busy ? <><Spin />Sending…</> : "I have paid"}</button>
                 <small>Your account opens after our team confirms the payment. This usually takes a few minutes.</small>
               </form>
             </div>

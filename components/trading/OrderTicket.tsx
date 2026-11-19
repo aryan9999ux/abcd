@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import type { InstrumentRef, OrderType, Side } from "@/lib/types";
 import { marginRequired } from "@/lib/market/pricing";
 import { STOCK_LEVERAGE } from "./constants";
@@ -80,16 +81,9 @@ export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, ava
         </label>
       )}
       <label className="tr-f">
-        Stop loss price (use one on every trade)
+        Stop loss price (optional)
         <input type="number" step={0.05} value={state.stopLoss} placeholder={state.side === "Buy" ? "Below your buy price" : "Above your sell price"} onChange={(e) => set({ stopLoss: e.target.value })} />
       </label>
-      {!(stop > 0) && (
-        <p className={"tr-slnote" + (slUsed >= 1 ? " hard" : "")} role="note">
-          {slUsed >= 1
-            ? "No stop loss. You already used your warning, so this trade will close your account."
-            : "No stop loss. The first trade without one is a warning. The second closes your account."}
-        </p>
-      )}
       <div className="tr-ln"><span className="tr-muted">Risk at stop</span><span className="tr-mono">{risk == null ? "—" : inr(risk)}</span></div>
       <div className="tr-ln"><span className="tr-muted">Quantity</span><span className="tr-mono">{units.toLocaleString("en-IN")}</span></div>
       <div className="tr-ln"><span className="tr-muted">Order value</span><span className="tr-mono">{px == null ? "—" : inr(units * px)}</span></div>
@@ -104,7 +98,7 @@ export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, ava
         onClick={onSubmit}
         title={blocked ?? undefined}
       >
-        {busy ? "Placing…" : `${state.side} ${nameOf(inst)}`}
+        {busy ? <><Spin />Placing…</> : `${state.side} ${nameOf(inst)}`}
       </button>
       <p className={"tr-msg" + (message?.err ? " err" : "")} role="status">{disabledReason ?? message?.text ?? ""}</p>
       </div>

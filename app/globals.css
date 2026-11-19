@@ -567,3 +567,17 @@ header.top nav.links a, header.top .brand { white-space: nowrap; }
 @media (min-width: 861px) and (max-width: 1060px) { header.top nav.links a { padding: 6px 9px; font-size: .82rem; } header.top .bar .btn.sm { padding-inline: 12px; } }
 
 .wordmark { white-space: nowrap; } .wordmark b { color: var(--hi); font-weight: inherit; }
+
+/* Loading feedback */
+.spin { display: inline-block; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -2px; margin-right: 8px; animation: spin .7s linear infinite; }
+.btn:has(.spin), .pt-btn:has(.spin), .tr-btn:has(.spin) { display: inline-flex; align-items: center; justify-content: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.splash { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 18px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: splash-in .25s ease both; }
+.splash p { margin: 0; color: var(--muted); font-size: .92rem; letter-spacing: 0; }
+.splash-ring { position: relative; width: 64px; height: 64px; }
+.splash-ring i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); animation: spin .9s linear infinite; }
+.splash-ring b { position: absolute; inset: 20px; border-radius: 50%; background: var(--accent); opacity: .85; animation: splash-pulse 1.2s ease-in-out infinite; }
+@keyframes splash-in { from { opacity: 0; } }
+@keyframes splash-pulse { 50% { transform: scale(.55); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .spin, .splash-ring i, .splash-ring b { animation-duration: 2s !important; } }
+.splash.inline { position: static; min-height: 60dvh; background: none; backdrop-filter: none; }

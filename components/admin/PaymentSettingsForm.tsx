@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import { useState } from "react";
 
 export function PaymentSettingsForm({ upiId, payee, qrUrl }: { upiId: string; payee: string; qrUrl: string | null }) {
@@ -19,7 +20,7 @@ export function PaymentSettingsForm({ upiId, payee, qrUrl }: { upiId: string; pa
       <label style={{ display: "grid", gap: 6 }}>UPI ID<input name="upiId" defaultValue={upiId} placeholder="name@bank" style={inp} /></label>
       <label style={{ display: "grid", gap: 6 }}>Name on the account<input name="payeeName" defaultValue={payee} style={inp} /></label>
       <label style={{ display: "grid", gap: 6 }}>QR image (replaces the current one)<input name="qr" type="file" accept="image/*" style={inp} /></label>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}><button className="btn primary" disabled={busy}>{busy ? "Saving…" : "Save"}</button>{msg && <span className="muted">{msg}</span>}</div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}><button className="btn primary" disabled={busy}>{busy ? <><Spin />Saving…</> : "Save"}</button>{msg && <span className="muted">{msg}</span>}</div>
     </form>
   );
 }

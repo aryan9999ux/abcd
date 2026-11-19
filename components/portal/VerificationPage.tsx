@@ -1,4 +1,5 @@
 "use client";
+import { Spin } from "@/components/ui/Spin";
 import { useEffect, useState } from "react";
 import { usePortal } from "./PortalProvider";
 import { STATES } from "./states";
@@ -105,7 +106,7 @@ export default function VerificationPage() {
           <section className="pt-card">
             <label className="pt-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} /><span>I confirm these details are mine, and I allow Edge Funded to store my documents to verify my identity and pay me.</span></label>
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
-              <button className="pt-btn primary" disabled={busy}>{busy ? "Sending…" : state === "none" ? "Submit for verification" : "Send again"}</button>
+              <button className="pt-btn primary" disabled={busy}>{busy ? <><Spin />Sending…</> : state === "none" ? "Submit for verification" : "Send again"}</button>
               <small style={{ color: "var(--muted)" }}>Signed in as {user.email}</small>
             </div>
             {msg && <p className={"pt-msg " + (msg.err ? "err" : "ok")} role="status" style={{ marginTop: 12 }}>{msg.t}</p>}
