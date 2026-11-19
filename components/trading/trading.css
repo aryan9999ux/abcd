@@ -29,7 +29,8 @@
 .tr-btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 .tr-btn.buy { background: var(--up); color: #03140d; border-color: transparent; }
 .tr-btn.sell { background: var(--down); color: #fff; border-color: transparent; }
-.tr-btn.buy:hover:not(:disabled), .tr-btn.sell:hover:not(:disabled) { background: inherit; filter: brightness(1.1); }
+.tr-btn.buy:hover:not(:disabled) { background: var(--up); filter: brightness(1.08); }
+.tr-btn.sell:hover:not(:disabled) { background: var(--down); filter: brightness(1.08); }
 .tr input, .tr select { font: inherit; font-size: .88rem; color: var(--fg); background: var(--bg2); border: 1px solid var(--line2); border-radius: 7px; padding: 8px 10px; width: 100%; min-width: 0; }
 .tr input:focus, .tr select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
 .tr input[type="number"] { font-family: var(--f-mono); }
