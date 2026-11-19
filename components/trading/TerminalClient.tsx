@@ -63,6 +63,17 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const desk = useMedia("(min-width: 1000px)");
   const [centre, setCentre] = useState<"chart" | "chain">("chart");
   const [dock, setDock] = useState<"pos" | "ord" | "his" | "rules">("pos");
+  const [dockH, setDockH] = useState(260);
+  useEffect(() => { try { const v = Number(localStorage.getItem("edge-dockh")); if (v >= 44 && v <= 700) setDockH(v); } catch {} }, []);
+  function startDockDrag(e: React.PointerEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const y0 = e.clientY, h0 = dockH, max = Math.max(200, window.innerHeight - 260);
+    let cur = h0;
+    const move = (ev: PointerEvent) => { cur = Math.min(max, Math.max(44, h0 + (y0 - ev.clientY))); setDockH(cur); };
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); try { localStorage.setItem("edge-dockh", String(Math.round(cur))); } catch {} };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  }
+  function toggleDock() { const n = dockH > 60 ? 44 : 260; setDockH(n); try { localStorage.setItem("edge-dockh", String(n)); } catch {} }
   const [q, setQ] = useState("");
   const found = useContractSearch(q);
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
@@ -586,7 +597,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         </div>
       ) : null}
 
-      <div className="dx-grid">
+      <div className="dx-grid" style={{ gridTemplateRows: `minmax(0, 1fr) ${dockH}px` }}>
         <aside className="dx-panel dx-wl" aria-label="Watchlist">
           <div className="dx-ph"><h2>Watchlist</h2>{source === "demo" && <span className="dx-tag">Sample prices</span>}</div>
           <input className="dx-search" placeholder="Search symbol or option, e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols and options" />
@@ -662,6 +673,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         </aside>
 
         <section className="dx-panel dx-dock">
+          <div className="dx-resize" role="separator" aria-orientation="horizontal" aria-label="Drag to resize. Double-click to collapse or expand." title="Drag to resize · double-click to collapse" onPointerDown={startDockDrag} onDoubleClick={toggleDock}><i /></div>
           <div className="dx-dtabs" role="tablist">
             <button role="tab" aria-selected={dock === "pos"} onClick={() => setDock("pos")}>Positions{accPositions.length ? <i>{accPositions.length}</i> : null}</button>
             <button role="tab" aria-selected={dock === "ord"} onClick={() => setDock("ord")}>Orders{pendingCount ? <i>{pendingCount}</i> : null}</button>

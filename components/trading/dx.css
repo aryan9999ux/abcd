@@ -41,9 +41,9 @@
 .dx-wrow .acts button { width: 28px; height: 28px; border: 0; border-radius: 8px; color: #fff; font: 700 .76rem var(--f-body); cursor: pointer; } .dx-wrow .b { background: var(--up); } .dx-wrow .s { background: var(--down); }
 
 /* centre */
-.dx-ih { flex: none; display: flex; align-items: center; gap: 22px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.dx-in h1 { font: 700 1.15rem var(--f-display); margin: 0; letter-spacing: -.02em; } .dx-in small { color: var(--muted); font-size: .76rem; }
-.dx-iq { display: flex; align-items: baseline; gap: 10px; } .dx-iq .tr-mono { font-size: 1.4rem; font-weight: 650; } .dx-iq small { font-size: .84rem; font-weight: 600; }
+.dx-ih { flex: none; display: flex; align-items: center; gap: 18px; padding: 7px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.dx-in h1 { font: 700 .98rem var(--f-display); margin: 0; letter-spacing: -.02em; } .dx-in small { color: var(--muted); font-size: .72rem; }
+.dx-iq { display: flex; align-items: baseline; gap: 10px; } .dx-iq .tr-mono { font-size: 1.1rem; font-weight: 650; } .dx-iq small { font-size: .78rem; font-weight: 600; }
 .dx-tabs { margin-left: auto; display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg2); }
 .dx-tabs button { border: 0; background: none; color: var(--muted); padding: 7px 14px; border-radius: 8px; font: 650 .84rem var(--f-body); cursor: pointer; } .dx-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
 .dx-cbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -71,3 +71,9 @@
 .dx-side { font: 700 .68rem var(--f-body); border-radius: 6px; padding: 3px 8px; } .dx-side.b { background: color-mix(in srgb, var(--up) 18%, transparent); color: var(--up); } .dx-side.s { background: color-mix(in srgb, var(--down) 18%, transparent); color: var(--down); }
 .dx-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; align-items: start; }
 .dx .dk-st { font: 600 .76rem var(--f-body); text-transform: capitalize; color: var(--muted); } .dx .dk-st.filled { color: var(--up); } .dx .dk-st.rejected { color: var(--down); } .dx .dk-st.pending { color: var(--hi); }
+
+.dx-dock { position: relative; }
+.dx-resize { position: absolute; top: -1px; left: 0; right: 0; height: 10px; z-index: 5; cursor: row-resize; display: grid; place-items: center; touch-action: none; }
+.dx-resize i { width: 44px; height: 4px; border-radius: 4px; background: var(--line); transition: background .15s; }
+.dx-resize:hover i { background: var(--accent); }
+.dx-dock .dx-dtabs { padding-top: 6px; }
