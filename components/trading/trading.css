@@ -326,3 +326,10 @@
 .tr-chainempty, .tr-chainempty * { white-space: normal !important; }
 .tr-chainempty .tr-es { max-width: 100%; }
 .tr-cbody > .tr-hint, .dk-chainwrap .tr-hint { padding: 8px 14px; }
+.tr-es-art { width: min(220px, 70%); height: auto; margin-bottom: 6px; }
+.tr-es.full { padding: 32px 22px 24px; gap: 8px; min-height: 60dvh; align-content: center; }
+.tr-es.full b { font-size: 1.15rem; }
+.tr-es.full p { font-size: .9rem; max-width: 32ch; }
+.tr-es-steps { list-style: none; margin: 18px 0 0; padding: 14px; width: min(340px, 100%); display: grid; gap: 12px; text-align: left; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.tr-es-steps li { display: flex; gap: 12px; align-items: center; color: var(--fg); font-size: .86rem; }
+.tr-es-steps i { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 .74rem var(--f-body); font-style: normal; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }

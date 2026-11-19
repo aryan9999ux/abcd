@@ -453,7 +453,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
           {screen === "ord" && (
             <div className="dk-stack">
-              {!acctOrders.length && <EmptyState icon="list" title="No orders yet" hint="Orders you place will show up here." />}
+              {!acctOrders.length && <EmptyState full icon="list" title="No orders yet" hint="Every order you place shows up here with its status." action={<button className="tr-btn" onClick={() => setScreen("watch")}>Place your first trade</button>} steps={["Open the watchlist or option chain","Pick a symbol and tap Buy or Sell","Set a stop-loss, then confirm"]} />}
               {acctOrders.map((o) => (
                 <div key={o.id} className="dk-order">
                   <span className={"dk-side " + (o.side === "Buy" ? "b" : "s")}>{o.side}</span>
@@ -473,7 +473,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 <button className="tr-btn sm" onClick={squareAll} disabled={!accPositions.length || !active}>{confirmAll ? "Tap again to confirm" : "Exit all"}</button>
               </section>
               {data.loading && <EmptyState compact icon="pos" title="Loading positions…" />}
-              {!data.loading && !accPositions.length && <EmptyState icon="pos" title="No open positions" hint="Use the watchlist or option chain to place a trade." action={<button className="tr-btn sm" onClick={() => setScreen("watch")}>Open watchlist</button>} />}
+              {!data.loading && !accPositions.length && <EmptyState full icon="pos" title="No open positions" hint="Your live trades and their P&L appear here." action={<button className="tr-btn" onClick={() => setScreen("watch")}>Open watchlist</button>} steps={["Open the watchlist or option chain","Pick a symbol and tap Buy or Sell","Set a stop-loss, then confirm"]} />}
               {accPositions.map((p) => { const pl = positionPnl(p, spots), px = livePrice(p.instrument, spots); return (
                 <div key={p.id} className="dk-pos">
                   <button className="dk-posmain" onClick={() => openInst(parseInstrumentKey(p.instrument), "pos")}>
@@ -502,7 +502,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               {m && <RulesPanel account={account} m={m} openCount={accPositions.length} />}
               <section className="dk-card flush">
                 <div className="dk-h pad"><h2>Recent trades</h2></div>
-                {!acctTrades.length && <EmptyState compact icon="trade" title="No trades yet" hint="Closed and filled trades appear here." />}
+                {!acctTrades.length && <EmptyState icon="trade" title="No trades yet" hint="Filled trades appear here." />}
                 {acctTrades.slice(0, 30).map((t) => (
                   <div key={t.id} className="dk-row static">
                     <span><b>{nameOfKey(t.instrument)}</b><small>{t.side} · {t.qty} @ {num(t.price)} · {timeOnly(t.executed_at)}</small></span>
