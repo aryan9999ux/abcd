@@ -25,6 +25,7 @@ export interface AccountRow {
   day_start_equity: number;
   trading_days: number;
   breach_reason: string | null;
+  no_sl_warnings?: number;
   created_at: string;
   rules?: import("@/lib/rules").PlanRules | null;
   peak_eod_balance?: number | null;

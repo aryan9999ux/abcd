@@ -30,6 +30,12 @@ function copyFor(a: AccountRow): Copy {
     whyHi: `आपने एक साथ ${r.maxOpenPositions} से ज़्यादा पोज़िशन खोलीं।`,
     ruleHi: `इस प्लान में एक समय पर ${r.maxOpenPositions} खुली पोज़िशन की अनुमति है। एक और खोलने पर अकाउंट बंद हो जाता है, ताकि ओवर-ट्रेडिंग न हो।`,
   };
+  if (reason.startsWith("Traded without a stop loss")) return {
+    why: "You placed a second trade without a stop loss, after already getting a warning.",
+    rule: "Every trade should have a stop loss. The first trade without one gives a clear warning and goes through. A second trade without a stop loss closes the account, and open positions are squared off.",
+    whyHi: "चेतावनी मिलने के बाद आपने दूसरा ट्रेड बिना स्टॉप लॉस के लगाया।",
+    ruleHi: "हर ट्रेड में स्टॉप लॉस लगाना चाहिए। बिना स्टॉप लॉस का पहला ट्रेड चेतावनी के साथ हो जाता है। दूसरा ट्रेड बिना स्टॉप लॉस के लगाने पर अकाउंट बंद हो जाता है और खुली पोज़िशन बंद कर दी जाती हैं।",
+  };
   if (reason.startsWith("Demo ended")) return {
     why: "Your 3-day demo has ended.", rule: "A demo lasts 3 days. It uses the same rules as the real plan but has no payouts.",
     whyHi: "आपका 3 दिन का डेमो खत्म हो गया है।", ruleHi: "डेमो 3 दिन चलता है। इसमें असली प्लान जैसे ही नियम होते हैं, लेकिन पेआउट नहीं मिलता।",

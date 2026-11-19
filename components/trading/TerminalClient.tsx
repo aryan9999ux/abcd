@@ -19,6 +19,7 @@ import NoAccounts from "./NoAccounts";
 import OptionChain from "./OptionChain";
 import { RiskPanel } from "./StatusStrip";
 import RulesPanel from "./RulesPanel";
+import SlWarning from "./SlWarning";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
 import "./trading.css";
@@ -64,6 +65,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
+  const [slNotice, setSlNotice] = useState(false);
 
   // Contracts that need live prices: the selected one, open positions and pending orders.
   const contractKeys = useMemo(() => {
@@ -158,7 +160,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   async function sendOrder(side: Side, units: number, orderType: "Market" | "Limit" | "Stop", price?: number): Promise<boolean> {
     if (!accountId) return false;
     setBusy(true);
-    const res = await postJSON<{ orderId: string; status: "filled" | "pending"; fillPrice?: number }>("/api/orders", {
+    const res = await postJSON<{ orderId: string; status: "filled" | "pending"; fillPrice?: number; stopLossWarning?: boolean }>("/api/orders", {
       accountId,
       underlying: sel.underlying,
       segment: sel.segment,
@@ -169,6 +171,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       qty: units,
       ...(orderType !== "Market" && price != null ? { price } : {}),
       ...(Number(ticket.stopLoss) > 0 ? { stopLoss: Number(ticket.stopLoss) } : {}),
+      ...(orderType === "Market" && ltp != null ? { seenPrice: ltp } : {}),
     });
     setBusy(false);
     if (res.ok) {
@@ -177,6 +180,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         : `${orderType} order placed: ${side} ${nameOf(sel)}${price != null ? " at " + num(price) : ""}`;
       setMsg({ text, err: false });
       toast.show(text);
+      if (res.stopLossWarning) setSlNotice(true);
       data.refetch();
       return true;
     }
@@ -521,11 +525,13 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               busy={busy}
               message={msg}
               onSubmit={submitTicket}
+              slUsed={account?.no_sl_warnings ?? 0}
             />
           </div>
         </div>
       )}
       {toast.node}
+      {slNotice && <SlWarning onClose={() => setSlNotice(false)} />}
     </div>
   );
 
@@ -629,7 +635,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         </section>
 
         <aside className="dx-right">
-          <OrderTicket inst={sel} lot={lot ?? 1} ltp={ltp} spot={spot} state={ticket} onChange={setTicket} available={m ? m.available : null} disabledReason={blockedReason} busy={busy} message={msg} onSubmit={submitTicket} />
+          <OrderTicket inst={sel} lot={lot ?? 1} ltp={ltp} spot={spot} state={ticket} onChange={setTicket} available={m ? m.available : null} disabledReason={blockedReason} busy={busy} message={msg} onSubmit={submitTicket} slUsed={account?.no_sl_warnings ?? 0} />
           {account && (
             <div className="dx-panel dx-fund">
               <div className="dx-ph"><h2>Funds</h2></div>
@@ -690,6 +696,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         </section>
       </div>
       {toast.node}
+      {slNotice && <SlWarning onClose={() => setSlNotice(false)} />}
     </div>
   );
 

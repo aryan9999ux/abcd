@@ -11,7 +11,7 @@ export default function DayStrip({ minHold, cutoff }: { minHold: number; cutoff:
         <span className="runner" />
       </div>
       <ol className="day-labels">
-        <li className="l1"><b>9:15 AM</b><span>Market opens. Orders are accepted, and every one needs a stop loss.</span></li>
+        <li className="l1"><b>9:15 AM</b><span>Market opens. Orders are accepted. Use a stop loss on every trade: the first trade without one is a warning, the second closes the account.</span></li>
         <li className="l2"><b>{minHold} seconds</b><span>Each position stays open at least this long. Your stop loss still works at any time.</span></li>
         <li className="l3"><b>{cutoff}</b><span>Last time to open a new position. After this you can only close.</span></li>
         <li className="l4"><b>3:30 PM</b><span>Market closes. Daily loss resets for the next session.</span></li>

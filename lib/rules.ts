@@ -16,6 +16,7 @@ export interface PlanRules {
   maxOpenPositions: number;        // one more breaches the account
   minHoldSeconds: number;
   entryCutoffIST: string;          // "15:15", no new positions from this time
+  noStopLossWarnings?: number;     // trades without a stop loss allowed as a warning before the account is closed (default 1)
   ideaCapPctOfDaily: number;       // one underlying, one direction, one day: total risk cap as % of the daily loss limit
   largestTradeMultiple: number | null; // risk of a new trade vs average of this cycle's trades
   payout: {
@@ -31,21 +32,21 @@ export const PLAN_RULES: Record<string, PlanRules> = {
   instant: {
     version: "1.0", dailyLossPct: 4, drawdownPct: 10, drawdownType: "trailing", targetsPct: [],
     evalProfitableDay: { pct: 0.2, days: 7 }, fundedProfitableDay: { pct: 0.2, days: 7 },
-    riskPerTradePct: 1.5, maxOpenPositions: 2, minHoldSeconds: 60, entryCutoffIST: "15:15",
+    riskPerTradePct: 1.5, maxOpenPositions: 2, minHoldSeconds: 60, entryCutoffIST: "15:15", noStopLossWarnings: 1,
     ideaCapPctOfDaily: 40, largestTradeMultiple: 3,
     payout: { cycleDays: 14, minProfitPct: 3, minPayoutInr: 5000, splitPct: 80, feeRefundAtPayout: null },
   },
   one_step: {
     version: "1.0", dailyLossPct: 4, drawdownPct: 8, drawdownType: "static", targetsPct: [10],
     evalProfitableDay: { pct: 0.2, days: 5 }, fundedProfitableDay: { pct: 0.1, days: 5 },
-    riskPerTradePct: 1.5, maxOpenPositions: 3, minHoldSeconds: 60, entryCutoffIST: "15:15",
+    riskPerTradePct: 1.5, maxOpenPositions: 3, minHoldSeconds: 60, entryCutoffIST: "15:15", noStopLossWarnings: 1,
     ideaCapPctOfDaily: 40, largestTradeMultiple: 3,
     payout: { cycleDays: 14, minProfitPct: 3, minPayoutInr: 5000, splitPct: 80, feeRefundAtPayout: 3 },
   },
   two_step: {
     version: "1.0", dailyLossPct: 4, drawdownPct: 8, drawdownType: "static", targetsPct: [8, 5],
     evalProfitableDay: { pct: 0.1, days: 5 }, fundedProfitableDay: { pct: 0.1, days: 5 },
-    riskPerTradePct: 1.5, maxOpenPositions: 3, minHoldSeconds: 60, entryCutoffIST: "15:15",
+    riskPerTradePct: 1.5, maxOpenPositions: 3, minHoldSeconds: 60, entryCutoffIST: "15:15", noStopLossWarnings: 1,
     ideaCapPctOfDaily: 40, largestTradeMultiple: 3,
     payout: { cycleDays: 14, minProfitPct: 3, minPayoutInr: 5000, splitPct: 80, feeRefundAtPayout: 3 },
   },

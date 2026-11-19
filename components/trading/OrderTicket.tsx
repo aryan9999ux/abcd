@@ -25,6 +25,8 @@ interface Props {
   busy: boolean;
   message: { text: string; err: boolean } | null;
   onSubmit: () => void;
+  /** How many no-stop-loss warnings this account has already used. */
+  slUsed?: number;
 }
 
 /** Units for the ticket quantity: lots * lot size for F&O, shares for stocks. */
@@ -33,7 +35,7 @@ export function ticketUnits(inst: InstrumentRef, qty: string, lot: number): numb
   return inst.segment === "EQ" ? q : q * lot;
 }
 
-export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, available, disabledReason, busy, message, onSubmit }: Props) {
+export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, available, disabledReason, busy, message, onSubmit, slUsed = 0 }: Props) {
   const fo = inst.segment !== "EQ";
   const units = ticketUnits(inst, state.qty, lot);
   const limit = Number(state.price);
@@ -78,9 +80,16 @@ export default function OrderTicket({ inst, lot, ltp, spot, state, onChange, ava
         </label>
       )}
       <label className="tr-f">
-        Stop loss price (required to open a trade)
+        Stop loss price (use one on every trade)
         <input type="number" step={0.05} value={state.stopLoss} placeholder={state.side === "Buy" ? "Below your buy price" : "Above your sell price"} onChange={(e) => set({ stopLoss: e.target.value })} />
       </label>
+      {!(stop > 0) && (
+        <p className={"tr-slnote" + (slUsed >= 1 ? " hard" : "")} role="note">
+          {slUsed >= 1
+            ? "No stop loss. You already used your warning, so this trade will close your account."
+            : "No stop loss. The first trade without one is a warning. The second closes your account."}
+        </p>
+      )}
       <div className="tr-ln"><span className="tr-muted">Risk at stop</span><span className="tr-mono">{risk == null ? "—" : inr(risk)}</span></div>
       <div className="tr-ln"><span className="tr-muted">Quantity</span><span className="tr-mono">{units.toLocaleString("en-IN")}</span></div>
       <div className="tr-ln"><span className="tr-muted">Order value</span><span className="tr-mono">{px == null ? "—" : inr(units * px)}</span></div>

@@ -33,8 +33,10 @@ export interface PlaceOrderRequest extends InstrumentRef {
   qty: number;
   /** Required for Limit and Stop. Ignored for Market. */
   price?: number;
-  /** Required when the order opens or adds to a position. */
+  /** Optional. Trading without one gives a warning the first time and closes the account the second time. */
   stopLoss?: number;
+  /** Price on the trader's screen. A market order is refused if the live price has moved away from it by more than a small tolerance. */
+  seenPrice?: number;
 }
 
 export interface CancelOrderRequest { accountId: string; orderId: string }

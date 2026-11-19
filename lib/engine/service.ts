@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../supabase/admin";
 import { ensurePrice, getPrice, getSpot, want } from "../market/server-feed";
@@ -20,6 +21,7 @@ import { PLAN_RULES, type PlanRules } from "../rules";
  * more than one instance, move recordFill into a Postgres function so the position, trade and balance change atomically.
  */
 
+export const NO_SL_REASON = "Traded without a stop loss after a warning";
 const MAX_PENDING_ORDERS = 50;
 const MAX_ACCOUNTS_PER_USER = 20;
 const SNAPSHOT_EVERY_MS = 60_000;
@@ -46,7 +48,7 @@ interface AccountRow {
   balance: number; day_start_equity: number; trading_days: number; day_start_date: string | null;
   last_trading_date: string | null; breach_reason: string | null; rules: PlanRules; peak_eod_balance: number;
   cycle_no: number; cycle_start_date: string | null; payouts_count: number; purchase_id: string | null;
-  is_demo: boolean; demo_expires_at: string | null;
+  is_demo: boolean; demo_expires_at: string | null; no_sl_warnings: number;
 }
 interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number; stop_loss: number | null; opened_at: string }
 interface Ctx { sb: Sb; acct: AccountRow; positions: PosRow[]; now: number }
@@ -62,21 +64,45 @@ function toAccount(r: Record<string, unknown>): AccountRow {
     peak_eod_balance: r.peak_eod_balance == null ? num(r.account_size) : num(r.peak_eod_balance),
     cycle_no: num(r.cycle_no ?? 0), cycle_start_date: (r.cycle_start_date as string) ?? null,
     payouts_count: num(r.payouts_count ?? 0), purchase_id: (r.purchase_id as string) ?? null,
-    is_demo: r.is_demo === true, demo_expires_at: (r.demo_expires_at as string) ?? null,
+    is_demo: r.is_demo === true, demo_expires_at: (r.demo_expires_at as string) ?? null, no_sl_warnings: num(r.no_sl_warnings ?? 0),
   };
+}
+
+function toPositions(rows: unknown): PosRow[] {
+  return ((rows as Record<string, unknown>[] | null) ?? []).map((p) => ({
+    ...p, qty: num(p.qty), avg_price: num(p.avg_price), stop_loss: p.stop_loss == null ? null : num(p.stop_loss),
+  })) as unknown as PosRow[];
 }
 
 async function loadCtx(sb: Sb, accountId: string, userId?: string): Promise<Ctx> {
   let q = sb.from("trading_accounts").select("*").eq("id", accountId);
   if (userId) q = q.eq("user_id", userId);
-  const row = must(await q.maybeSingle(), "load account");
+  const [acc, pos] = await Promise.all([
+    q.maybeSingle(),
+    sb.from("positions").select("id,instrument,segment,side,qty,avg_price,stop_loss,opened_at").eq("account_id", accountId),
+  ]);
+  const row = must(acc, "load account");
   if (!row) throw new HttpError(404, "Account not found.");
-  const acct = toAccount(row);
-  const pos = must(await sb.from("positions").select("id,instrument,segment,side,qty,avg_price,stop_loss,opened_at").eq("account_id", accountId), "load positions");
-  const positions = (pos ?? []).map((p: Record<string, unknown>) => ({
-    ...p, qty: num(p.qty), avg_price: num(p.avg_price), stop_loss: p.stop_loss == null ? null : num(p.stop_loss),
-  })) as PosRow[];
-  return { sb, acct, positions, now: Date.now() };
+  return { sb, acct: toAccount(row), positions: toPositions(must(pos, "load positions")), now: Date.now() };
+}
+
+interface OrderContext { ctx: Ctx; underReview: boolean; pendingCount: number; today: { underlying: string; segment: string; side: Side; risk_inr: number }[]; past: number[] }
+
+/** Everything an order needs from the database, in ONE round trip. */
+async function loadOrderContext(sb: Sb, accountId: string, userId: string): Promise<OrderContext> {
+  const now = Date.now();
+  const dayStart = new Date(Date.parse(istDate(now) + "T00:00:00+05:30")).toISOString();
+  // The cycle start is only known after reading the account, so read a generous window and filter below.
+  const since = new Date(now - 120 * 86_400_000).toISOString();
+  const { data, error } = await sb.rpc("order_context", { p_account: accountId, p_user: userId, p_day_start: dayStart, p_since: since });
+  if (error) throw new Error(`load order context: ${error.message}`);
+  const d = data as { account: Record<string, unknown> | null; positions: unknown; pending_count: number; under_review: boolean; today: OrderContext["today"]; past: unknown[] };
+  if (!d.account) throw new HttpError(404, "Account not found.");
+  return {
+    ctx: { sb, acct: toAccount(d.account), positions: toPositions(d.positions), now },
+    underReview: d.under_review, pendingCount: num(d.pending_count),
+    today: (d.today ?? []).map((t) => ({ ...t, risk_inr: num(t.risk_inr) })), past: (d.past ?? []).map(num),
+  };
 }
 
 /* ---------- pricing the book ---------- */
@@ -127,7 +153,7 @@ async function insertOrder(ctx: Ctx, o: {
   return row.id as string;
 }
 
-/** Apply one fill: order row, trade, position (net/average/flip) and account balance. */
+/** Apply one fill: order, trade, position (net/average/flip), balance and day result, atomically in ONE database call. */
 async function recordFill(ctx: Ctx, f: {
   ref: InstrumentRef; side: Side; qty: number; price: number; type: OrderType; orderId?: string; stopLoss?: number | null; risk?: number | null;
 }): Promise<string> {
@@ -135,33 +161,7 @@ async function recordFill(ctx: Ctx, f: {
   const existing = ctx.positions.find((p) => p.instrument === key);
   const state: PositionState | null = existing ? { side: existing.side, qty: existing.qty, avg: existing.avg_price } : null;
   const { next, realized } = netFill(state, f.side, f.qty, f.price);
-
-  let orderId = f.orderId;
-  if (orderId) {
-    must(await ctx.sb.from("orders").update({ status: "filled", filled_at: new Date(ctx.now).toISOString() }).eq("id", orderId), "fill order");
-  } else {
-    orderId = await insertOrder(ctx, { ref: f.ref, side: f.side, type: f.type, qty: f.qty, price: f.price, status: "filled", stopLoss: f.stopLoss, risk: f.risk });
-  }
-  must(await ctx.sb.from("trades").insert({
-    user_id: ctx.acct.user_id, account_id: ctx.acct.id, order_id: orderId, instrument: key, side: f.side,
-    qty: f.qty, price: f.price, realized_pnl: realized,
-  }), "insert trade");
-
-  if (existing && next) {
-    const stop = f.stopLoss != null && next.side === f.side ? f.stopLoss : existing.stop_loss;
-    must(await ctx.sb.from("positions").update({ side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop }).eq("id", existing.id), "update position");
-    Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop });
-  } else if (existing) {
-    must(await ctx.sb.from("positions").delete().eq("id", existing.id), "delete position");
-    ctx.positions = ctx.positions.filter((p) => p !== existing);
-  } else if (next) {
-    const row = must(await ctx.sb.from("positions").insert({
-      user_id: ctx.acct.user_id, account_id: ctx.acct.id, instrument: key, segment: f.ref.segment,
-      side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: f.stopLoss ?? null,
-    }).select("id").single(), "insert position");
-    ctx.positions.push({ id: row.id as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: f.stopLoss ?? null, opened_at: new Date(ctx.now).toISOString() });
-  }
-
+  const orderId = f.orderId ?? randomUUID();
   const today = istDate(ctx.now);
   const newDay = ctx.acct.last_trading_date !== today;
   const patch = {
@@ -170,9 +170,27 @@ async function recordFill(ctx: Ctx, f: {
     last_trading_date: today,
     cycle_start_date: ctx.acct.cycle_start_date ?? today,
   };
-  must(await ctx.sb.from("trading_accounts").update(patch).eq("id", ctx.acct.id), "update account");
+  const filledAt = new Date(ctx.now).toISOString();
+  let posAction: "insert" | "update" | "delete" | "none" = "none";
+  let posId: string | null = existing?.id ?? null;
+  let stop: number | null = null;
+  if (existing && next) { posAction = "update"; stop = f.stopLoss != null && next.side === f.side ? f.stopLoss : existing.stop_loss; }
+  else if (existing) posAction = "delete";
+  else if (next) { posAction = "insert"; posId = randomUUID(); stop = f.stopLoss ?? null; }
+
+  const { error } = await ctx.sb.rpc("apply_fill", { p: {
+    account_id: ctx.acct.id, user_id: ctx.acct.user_id, order_id: orderId, order_exists: !!f.orderId,
+    instrument: key, segment: f.ref.segment, underlying: f.ref.underlying, strike: f.ref.strike ?? null, expiry: f.ref.expiry ?? null,
+    side: f.side, order_type: f.type, qty: f.qty, price: f.price, stop_loss: f.stopLoss ?? null, risk: f.risk ?? null, filled_at: filledAt,
+    pos_action: posAction, pos_id: posId, pos_side: next?.side ?? null, pos_qty: next?.qty ?? null, pos_avg: next?.avg ?? null, pos_stop: stop,
+    realized, balance: patch.balance, trading_days: patch.trading_days, last_date: today, cycle_start: patch.cycle_start_date, cycle_no: ctx.acct.cycle_no, day: today,
+  } });
+  if (error) throw new Error(`apply fill: ${error.message}`);
+
+  if (posAction === "update" && existing && next) Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop });
+  else if (posAction === "delete" && existing) ctx.positions = ctx.positions.filter((p) => p !== existing);
+  else if (posAction === "insert" && next) ctx.positions.push({ id: posId as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop, opened_at: filledAt });
   Object.assign(ctx.acct, patch);
-  if (realized !== 0) await addDayResult(ctx, today, realized);
   return orderId;
 }
 
@@ -182,22 +200,6 @@ async function snapshot(ctx: Ctx, force: boolean) {
   snapAt.set(ctx.acct.id, ctx.now);
   const { equity } = book(ctx);
   must(await ctx.sb.from("equity_snapshots").insert({ user_id: ctx.acct.user_id, account_id: ctx.acct.id, equity }), "equity snapshot");
-}
-
-async function addDayResult(ctx: Ctx, day: string, pnl: number) {
-  const where = { account_id: ctx.acct.id, cycle_no: ctx.acct.cycle_no, day };
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const cur = must(await ctx.sb.from("day_results").select("pnl").match(where).maybeSingle(), "load day result");
-    if (cur) {
-      must(await ctx.sb.from("day_results").update({ pnl: round2(num(cur.pnl) + pnl) }).match(where), "update day result");
-      return;
-    }
-    const { error } = await ctx.sb.from("day_results").insert({ ...where, pnl: round2(pnl) });
-    if (!error) return;
-    // Another worker created the row first: loop and add to it instead.
-    if (error.code !== "23505") throw new Error(`insert day result: ${error.message}`);
-  }
-  throw new Error("insert day result: too many conflicts");
 }
 
 async function dayPnls(ctx: Ctx): Promise<number[]> {
@@ -298,13 +300,16 @@ async function underReview(ctx: Ctx): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-/** Rules that apply when an order adds exposure. Returns the order's risk in rupees; throws a plain message when blocked. */
-async function checkOpeningRules(ctx: Ctx, o: {
+/**
+ * Rules that apply when an order adds exposure. Returns the order's risk in rupees (null when there is no stop loss).
+ * A missing stop loss is not blocked here: the caller gives a warning the first time and closes the account after that.
+ */
+function checkOpeningRules(ctx: Ctx, pre: OrderContext, o: {
   ref: InstrumentRef; side: Side; qty: number; entry: number; stop: number | null | undefined; existing: PosRow | undefined;
-}): Promise<number> {
+}): number | null {
   const r = ctx.acct.rules;
   if (pastEntryCutoff(ctx.now, r.entryCutoffIST)) throw new HttpError(422, `No new positions after ${r.entryCutoffIST.replace(/^(\d+):(\d+)$/, (_m, h, m) => `${Number(h) % 12 || 12}:${m} ${Number(h) >= 12 ? "PM" : "AM"}`)}. You can still close positions.`);
-  if (o.stop == null) throw new HttpError(422, "Add a stop loss. Every trade needs one.");
+  if (o.stop == null) return null;
   if (!stopOnCorrectSide(o.side, o.stop, o.entry)) {
     throw new HttpError(422, o.side === "Buy" ? "The stop loss must be below your buy price." : "The stop loss must be above your sell price.");
   }
@@ -319,30 +324,32 @@ async function checkOpeningRules(ctx: Ctx, o: {
   const newRisk = round2(riskAmount(o.entry, o.stop, o.qty));
 
   // one idea (same underlying and direction, same day) cannot carry more than a share of the daily limit
-  const dayStart = new Date(Date.parse(istDate(ctx.now) + "T00:00:00+05:30")).toISOString();
-  const today = must(await ctx.sb.from("orders").select("underlying,segment,side,risk_inr").eq("account_id", ctx.acct.id)
-    .eq("status", "filled").not("risk_inr", "is", null).gte("filled_at", dayStart), "load today's orders") ?? [];
   const dirNow = directionOf(o.ref.segment, o.side);
-  const used = today
-    .filter((t: Record<string, unknown>) => t.underlying === o.ref.underlying && directionOf(String(t.segment), t.side as Side) === dirNow)
-    .reduce((sum: number, t: Record<string, unknown>) => sum + num(t.risk_inr), 0);
+  const used = pre.today
+    .filter((t) => t.underlying === o.ref.underlying && directionOf(t.segment, t.side) === dirNow)
+    .reduce((sum, t) => sum + t.risk_inr, 0);
   const cap = round2(((ctx.acct.account_size * r.dailyLossPct) / 100) * (r.ideaCapPctOfDaily / 100));
   if (used + newRisk > cap) {
     throw new HttpError(422, `Too much risk on one idea today: ₹${Math.ceil(used + newRisk).toLocaleString("en-IN")} on ${o.ref.underlying} ${dirNow}, the limit is ₹${Math.floor(cap).toLocaleString("en-IN")}.`);
   }
 
-  if (r.largestTradeMultiple != null) {
-    const since = ctx.acct.cycle_start_date ? new Date(Date.parse(ctx.acct.cycle_start_date + "T00:00:00+05:30")).toISOString() : "1970-01-01";
-    const past = must(await ctx.sb.from("orders").select("risk_inr").eq("account_id", ctx.acct.id).eq("status", "filled")
-      .not("risk_inr", "is", null).gte("filled_at", since).limit(300), "load past risk") ?? [];
-    if (past.length >= 5) {
-      const avg = past.reduce((a: number, t: { risk_inr: unknown }) => a + num(t.risk_inr), 0) / past.length;
-      if (newRisk > avg * r.largestTradeMultiple) {
-        throw new HttpError(422, `This trade risks ₹${Math.ceil(newRisk).toLocaleString("en-IN")}, more than ${r.largestTradeMultiple}× your average trade (₹${Math.ceil(avg).toLocaleString("en-IN")}).`);
-      }
+  if (r.largestTradeMultiple != null && pre.past.length >= 5) {
+    const avg = pre.past.reduce((a, t) => a + t, 0) / pre.past.length;
+    if (newRisk > avg * r.largestTradeMultiple) {
+      throw new HttpError(422, `This trade risks ₹${Math.ceil(newRisk).toLocaleString("en-IN")}, more than ${r.largestTradeMultiple}× your average trade (₹${Math.ceil(avg).toLocaleString("en-IN")}).`);
     }
   }
   return newRisk;
+}
+
+/** Trading without a stop loss: allowed as a warning, and the account is closed once the warnings are used up. */
+async function handleNoStop(ctx: Ctx): Promise<{ warn: boolean }> {
+  const allowed = ctx.acct.rules.noStopLossWarnings ?? 1;
+  if (ctx.acct.no_sl_warnings >= allowed) {
+    await squareOff(ctx, "overall_loss_limit", NO_SL_REASON);
+    throw new HttpError(403, `Account closed: ${NO_SL_REASON}. All positions were closed.`);
+  }
+  return { warn: true };
 }
 
 /** Opening one position too many ends the account. */
@@ -352,17 +359,41 @@ async function breachIfTooManyPositions(ctx: Ctx, existing: PosRow | undefined) 
   throw new HttpError(403, `Account closed: ${breachText("max_positions", ctx)}. All positions were closed.`);
 }
 
+/** Loss limits from the live book, no database needed. Returns the breach, if any. */
+function riskBreach(ctx: Ctx): Breach | null {
+  const { equity } = book(ctx);
+  const rl = ctx.acct.rules;
+  return evaluateRisk({
+    accountSize: ctx.acct.account_size, dayStartEquity: ctx.acct.day_start_equity, equity,
+    dailyLossPct: rl.dailyLossPct, drawdownPct: rl.drawdownPct, drawdownType: rl.drawdownType, peakEod: ctx.acct.peak_eod_balance,
+  }).breach ?? null;
+}
+
+/** Slow bookkeeping that must not delay the trader's confirmation. It runs next in the account's queue, before any later order. */
+function afterFillInBackground(ctx: Ctx) {
+  void withLock(ctx.acct.id, async () => {
+    try { await maybePromote(ctx); await snapshot(ctx, true); }
+    catch (e) { console.error("[engine] after fill", e instanceof Error ? e.message : e); }
+  });
+}
+
+/** How far the live price may move from what the trader saw before a market order is refused. */
+const slipTolerance = (px: number) => (px < 500 ? Math.max(px * 0.03, 0.6) : px * 0.003);
+
 export async function placeOrder(userId: string, req: PlaceOrderRequest) {
   return withLock(req.accountId, async () => {
-    const ctx = await loadCtx(admin(), req.accountId, userId);
-    requireActive(ctx);
     const ref = refOf(req);
-    await ensureInstruments();
+    // One database round trip for everything this order needs, while the instrument list and price are made ready.
+    const [pre] = await Promise.all([
+      loadOrderContext(admin(), req.accountId, userId),
+      ensureInstruments().then(() => ensurePrice(ref)),
+    ]);
+    const { ctx } = pre;
+    requireActive(ctx);
     const bad = validateInstrument(ref, req.qty, specOf(ref.underlying));
     if (bad) throw new HttpError(400, bad);
     if (ref.segment !== "EQ" && !instOf(ref)) throw new HttpError(400, "That contract is not listed on the exchange.");
     requireMarketOpen(ctx.now);
-    await ensurePrice(ref);
     const spot = spotFor(ref);
     if (ref.strike != null && !strikeInRange(ref.strike, spot)) throw new HttpError(400, "That strike is too far from the current price.");
     await rollDay(ctx);
@@ -373,14 +404,18 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
     if (action === "invalid") {
       throw new HttpError(400, limit == null ? "Enter a price for this order." : "A stop order must be placed beyond the current price.");
     }
+    if (action === "fill" && req.seenPrice != null && Math.abs(ltp - req.seenPrice) > slipTolerance(req.seenPrice)) {
+      throw new HttpError(409, `The price moved from ${req.seenPrice.toFixed(2)} to ${ltp.toFixed(2)}. Your order was not placed. Check the new price and try again.`);
+    }
 
     const key = instrumentKey(ref);
     const ex = ctx.positions.find((p) => p.instrument === key);
-    if (await underReview(ctx)) throw new HttpError(403, "Your payout request is under review. Trading is paused until it is decided.");
+    if (pre.underReview) throw new HttpError(403, "Your payout request is under review. Trading is paused until it is decided.");
     const inc = increasingQty(ex ? { side: ex.side, qty: ex.qty, avg: ex.avg_price } : null, req.side, req.qty);
     const estPx = action === "fill" ? ltp : (limit as number);
     let risk: number | null = null;
     let stop: number | null = null;
+    let noStop = false;
     if (ex && ex.side !== req.side) {
       if (req.qty > ex.qty) throw new HttpError(422, "Close the position first, then open the opposite one.");
       const heldFor = ctx.now - Date.parse(ex.opened_at);
@@ -390,26 +425,40 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
     } else {
       await breachIfTooManyPositions(ctx, ex);
       stop = req.stopLoss ?? null;
-      risk = await checkOpeningRules(ctx, { ref, side: req.side, qty: req.qty, entry: estPx, stop, existing: ex });
+      risk = checkOpeningRules(ctx, pre, { ref, side: req.side, qty: req.qty, entry: estPx, stop, existing: ex });
+      if (stop == null && !(ex && ex.stop_loss != null)) { await handleNoStop(ctx); noStop = true; }
     }
     const need = inc > 0 ? marginRequired(ref, req.side, inc, estPx, spot) : 0;
     const b = book(ctx);
     if (!hasMargin(need, b.equity, b.used)) {
       const reason = `Not enough margin. Needs ₹${Math.ceil(need).toLocaleString("en-IN")}, available ₹${Math.max(0, Math.floor(b.equity - b.used)).toLocaleString("en-IN")}.`;
-      await insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit ?? null, status: "rejected", reason });
+      void insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit ?? null, status: "rejected", reason }).catch(() => undefined);
       throw new HttpError(422, reason);
     }
 
+    const warn = noStop ? { stopLossWarning: true as const, warningsLeft: Math.max(0, (ctx.acct.rules.noStopLossWarnings ?? 1) - ctx.acct.no_sl_warnings - 1) } : {};
+    const markWarned = noStop
+      ? ctx.sb.from("trading_accounts").update({ no_sl_warnings: ctx.acct.no_sl_warnings + 1 }).eq("id", ctx.acct.id).then((r) => { must(r, "record warning"); ctx.acct.no_sl_warnings += 1; })
+      : Promise.resolve();
+
     if (action === "pending") {
-      const { count } = await ctx.sb.from("orders").select("id", { count: "exact", head: true }).eq("account_id", ctx.acct.id).eq("status", "pending");
-      if ((count ?? 0) >= MAX_PENDING_ORDERS) throw new HttpError(429, `You can have at most ${MAX_PENDING_ORDERS} pending orders.`);
-      const orderId = await insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending", stopLoss: stop, risk });
-      return { orderId, status: "pending" as const };
+      if (pre.pendingCount >= MAX_PENDING_ORDERS) throw new HttpError(429, `You can have at most ${MAX_PENDING_ORDERS} pending orders.`);
+      const [orderId] = await Promise.all([
+        insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending", stopLoss: stop, risk }),
+        markWarned,
+      ]);
+      return { orderId, status: "pending" as const, ...warn };
     }
 
-    const orderId = await recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType, stopLoss: stop, risk });
-    await afterChange(ctx);
-    return { orderId, status: "filled" as const, fillPrice: ltp };
+    const [orderId] = await Promise.all([
+      recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType, stopLoss: stop, risk }),
+      markWarned,
+    ]);
+    // Loss limits are checked on the live book right now; the rest of the bookkeeping happens after the reply.
+    const breach = riskBreach(ctx);
+    if (breach) await squareOff(ctx, breach);
+    else afterFillInBackground(ctx);
+    return { orderId, status: "filled" as const, fillPrice: ltp, ...warn, ...(breach ? { breached: true as const } : {}) };
   });
 }
 

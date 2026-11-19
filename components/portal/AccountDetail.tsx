@@ -88,7 +88,7 @@ export default function AccountDetail({ id }: { id: string }) {
             <div><span>Open positions at once</span><b>{r.maxOpenPositions}</b></div>
             <div><span>Minimum hold time</span><b>{r.minHoldSeconds} seconds</b></div>
             <div><span>No new trades after</span><b>{r.entryCutoffIST} IST</b></div>
-            <div><span>Stop loss</span><b>Required on every trade</b></div>
+            <div><span>Stop loss</span><b>1 warning, then the account closes</b></div>
             <div><span>Profit target</span><b>{r.targetsPct.length ? r.targetsPct.map((t) => `${t}%`).join(" then ") : "None, you start funded"}</b></div>
             <div><span>Your share of profit</span><b>{r.payout.splitPct}%</b></div>
             <div><span>Payouts</span><b>Every {r.payout.cycleDays} days, from {inr(r.payout.minPayoutInr)}</b></div>

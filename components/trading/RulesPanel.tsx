@@ -75,7 +75,7 @@ export default function RulesPanel({ account, m, openCount }: { account: Account
       <div className="tr-facts" style={{ marginTop: 14 }}>
         <div className="tr-ln"><span className="tr-muted">Max risk per trade</span><span className="tr-mono">{inr((account.balance * r.riskPerTradePct) / 100)}</span></div>
         <div className="tr-ln"><span className="tr-muted">New entries</span><span className={"tr-mono " + (entriesOpen ? "tr-up" : "tr-down")}>{entriesOpen ? `open until ${clock}` : `closed since ${clock}`}</span></div>
-        <div className="tr-ln"><span className="tr-muted">Stop loss</span><span>on every trade</span></div>
+        <div className="tr-ln"><span className="tr-muted">Stop loss</span><span className={"tr-mono " + ((account.no_sl_warnings ?? 0) >= 1 ? "tr-down" : "")}>{(account.no_sl_warnings ?? 0) >= 1 ? "warning used" : "1 warning, then closed"}</span></div>
       </div>
       {funded && (
         <div className="tr-facts" style={{ marginTop: 14 }}>
