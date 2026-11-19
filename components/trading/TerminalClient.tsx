@@ -413,7 +413,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               <section className="dk-card dk-chartcard">
                 <div className="dk-qh">
                   <div><b>{nameOf(sel)}</b>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
-                  <div className="dk-q"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={selChg >= 0 ? "tr-up" : "tr-down"}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</small>}</div>
+                  <div className="dk-q"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={selChg >= 0 ? "tr-up" : "tr-down"}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%) {selChg >= 0 ? "↗" : "↘"}</small>}</div>
                 </div>
                 <div className="dk-chart">
                   <ChartPanel
@@ -567,10 +567,10 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         <Link className="dx-back" href="/dashboard" aria-label="Back to portal">‹ Portal</Link>
         <span className="dx-logo"><LogoMark size={26} id="tx" /></span>
         <div className="dx-idx">
-          {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => { const c = chg(k); return (
+          {([["NIFTY", "Nifty 50"], ["BANKNIFTY", "Bank Nifty"], ["SENSEX", "Sensex"]] as const).map(([k, label]) => { const c = chg(k); return (
             <button key={k} onClick={() => { pickUnderlying(k); setCentre("chart"); }}>
-              <small>{k}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
-              <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : ""}</span>
+              <small>{label}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
+              <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "+" : ""}${num(c.d)} (${c.pc.toFixed(2)}%) ${c.d >= 0 ? "↗" : "↘"}` : ""}</span>
             </button>
           ); })}
         </div>

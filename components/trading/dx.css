@@ -93,3 +93,13 @@
 .dx-search { text-overflow: ellipsis; }
 .dx-search, .dk-search { box-sizing: border-box; }
 .dx .dx-search { width: calc(100% - 24px) !important; max-width: calc(100% - 24px); }
+
+/* Dhan-style quotes: plain-case muted name, bold price, change with arrow */
+.dx-idx small { font: 500 .8rem var(--f-body); letter-spacing: 0; text-transform: none; }
+.dx-idx .tr-mono { font-size: .84rem; font-weight: 600; }
+.dx-idx span:last-child { font-size: .76rem; font-weight: 500; }
+.dx-in h1 { font-weight: 500; color: var(--muted); }
+.dx-iq .tr-mono { color: var(--fg); }
+.dx-acct { padding: 4px 10px; gap: 8px; border-radius: 10px; }
+.dx-acct small { font-size: .62rem; } .dx-acct b { font: 600 .78rem var(--f-mono); }
+.dx-mkt { font-size: .78rem; }
