@@ -622,7 +622,6 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           <div className="dx-ih">
             <div className="dx-in"><h1>{nameOf(sel)}</h1></div>
             <div className="dx-iq"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</small>}</div>
-            <div className="dx-meta"><small>{fo ? `Lot ${lot ?? "—"}${sel.expiry ? ` · Expiry ${new Date(sel.expiry + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}` : "NSE · Cash"}</small></div>
             <div className="dx-tabs" role="tablist">
               <button role="tab" aria-selected={centre === "chart"} onClick={() => setCentre("chart")}>Chart</button>
               <button role="tab" aria-selected={centre === "chain"} onClick={() => { if (!selSpec) pickUnderlying("NIFTY"); setCentre("chain"); }}>Option chain</button>

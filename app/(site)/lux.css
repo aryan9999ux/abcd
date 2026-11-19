@@ -42,7 +42,7 @@
 .gc.night .gc-chip { background: linear-gradient(135deg, #b79cff, #9b98b8); }
 .gc-size { margin-top: auto; font: 700 clamp(2rem, 5.4cqw, 3.2rem)/1 var(--serif); letter-spacing: -.01em; font-size: clamp(1.9rem, 3.4vw, 3rem); text-shadow: 0 1px 0 rgba(255,255,255,.25); }
 .gc.night .gc-size { background: linear-gradient(120deg, #ffffff, #b79cff 60%, #8b5cf6); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
-.gc-bot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; opacity: .85; } .gc-bot b { font-weight: 700; letter-spacing: .1em; }
+.gc-bot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; font-size: .7rem; letter-spacing: 0; text-transform: none; opacity: .85; } .gc-bot b { font-weight: 700; letter-spacing: .1em; }
 .gc-num { margin-top: 10px; font: 500 .72rem var(--f-body); letter-spacing: .2em; opacity: .6; font-variant-numeric: tabular-nums; }
 .gc-sheen { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at var(--mx, 30%) var(--my, 15%), rgba(255,255,255,.42), transparent 48%); mix-blend-mode: soft-light; opacity: .9; }
 .gc::after { content: ""; position: absolute; inset: -40% -60%; background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.28) 50%, transparent 58%); transform: translateX(-60%); animation: sweep 7s ease-in-out infinite; pointer-events: none; }
@@ -61,7 +61,7 @@
 .sc-card { position: absolute; left: 50%; top: 50%; width: min(520px, 80vw); pointer-events: none; will-change: transform; }
 .sc-card .gc { filter: blur(1px); }
 .beat { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; gap: 10px; padding: 0 20px; will-change: transform, opacity; }
-.beat .k { font: 600 .9rem var(--f-body); letter-spacing: .24em; text-transform: uppercase; color: var(--hi); }
+.beat .k { font: 600 .9rem var(--f-body); letter-spacing: 0; text-transform: none; color: var(--hi); }
 .beat .big { font: 700 clamp(4.4rem, 17vw, 15rem)/.92 var(--serif); letter-spacing: -.03em; background: linear-gradient(180deg, #ffffff, #b79cff 55%, #6d3df0); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 60px rgba(139,92,246,.25)); }
 .beat p { max-width: 36ch; color: var(--muted); font-size: clamp(1rem, 1.6vw, 1.3rem); }
 .dots { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); display: grid; gap: 10px; } .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line2); transition: background .3s, transform .3s var(--spring); } .dots i.on { background: var(--hi); transform: scale(1.5); }
