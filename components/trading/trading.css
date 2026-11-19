@@ -308,3 +308,8 @@
 .tr-modal-card h2 { margin: 0; font: 700 1.3rem var(--f-display); letter-spacing: -.02em; } .tr-modal-card p { margin: 0; line-height: 1.55; font-size: .94rem; } .tr-modal-hi { color: var(--muted); }
 .tr-modal-ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 800 1.4rem var(--f-display); color: #1a1205; background: #ffb454; }
 @keyframes trModalIn { from { opacity: 0; } to { opacity: 1; } }
+.tr-sres { display: grid; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; max-height: 340px; overflow-y: auto; }
+.tr-sres-note { margin: 0; padding: 12px 14px; font-size: .84rem; color: var(--muted); }
+.tr-sres-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.tr-sres-row:last-child { border-bottom: 0; } .tr-sres-row:hover, .tr-sres-row:focus-visible { background: var(--accent-soft); outline: none; }
+.tr-sres-row span:first-child { display: grid; gap: 2px; } .tr-sres-row b { font-weight: 650; font-size: .92rem; } .tr-sres-row small { color: var(--muted); font-size: .74rem; }

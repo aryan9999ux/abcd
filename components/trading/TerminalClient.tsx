@@ -19,6 +19,8 @@ import NoAccounts from "./NoAccounts";
 import OptionChain from "./OptionChain";
 import { RiskPanel } from "./StatusStrip";
 import RulesPanel from "./RulesPanel";
+import SearchResults from "./SearchResults";
+import { useContractSearch } from "./useContractSearch";
 import SlWarning from "./SlWarning";
 import OrderTicket, { ticketUnits, type TicketState } from "./OrderTicket";
 import Shell from "./Shell";
@@ -60,6 +62,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const [centre, setCentre] = useState<"chart" | "chain">("chart");
   const [dock, setDock] = useState<"pos" | "ord" | "his" | "rules">("pos");
   const [q, setQ] = useState("");
+  const found = useContractSearch(q);
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
   const [tf, setTf] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -370,7 +373,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
           {screen === "watch" && (
             <div className="dk-stack">
-              <input className="dk-search" placeholder="Search symbol" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols" />
+              <input className="dk-search" placeholder="Search symbol or option, e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols and options" />
+              <SearchResults q={q} {...found} onPick={(ref) => { openInst(ref, "watch"); setQ(""); }} />
               <section className="dk-card flush">
                 {WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase()) || w.n.toLowerCase().includes(q.trim().toLowerCase())).map((w, i, arr) => (
                   <div key={w.k}>
@@ -576,7 +580,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       <div className="dx-grid">
         <aside className="dx-panel dx-wl" aria-label="Watchlist">
           <div className="dx-ph"><h2>Watchlist</h2>{source === "demo" && <span className="dx-tag">Sample prices</span>}</div>
-          <input className="dx-search" placeholder="Search symbol" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols" />
+          <input className="dx-search" placeholder="Search symbol or option, e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols and options" />
+          <div style={{ margin: "0 12px 8px" }}><SearchResults q={q} {...found} onPick={(ref) => { pick(ref); setCentre("chart"); setQ(""); }} /></div>
           <div className="dx-wlist">
             {wl.map((w, i) => { const c = chg(w.k); return (
               <div key={w.k}>

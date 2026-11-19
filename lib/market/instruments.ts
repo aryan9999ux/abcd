@@ -146,3 +146,46 @@ export function quoteKeyOf(ref: InstrumentRef): string | undefined {
   const i = instOf(ref);
   return i ? `${i.exchange}:${i.tradingsymbol}` : undefined;
 }
+
+/* ---------- search ---------- */
+
+const ALIASES: Record<string, string> = { nifty: "NIFTY", nf: "NIFTY", banknifty: "BANKNIFTY", bank: "BANKNIFTY", bn: "BANKNIFTY", sensex: "SENSEX", sx: "SENSEX" };
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+export interface SearchHit { underlying: string; segment: "CE" | "PE" | "FUT"; strike: number | null; expiry: string; lot: number }
+
+/**
+ * Find contracts from text like "25700 PE", "nifty 25700 ce", "banknifty 55000", "bn 55k pe 25 nov".
+ * Understands: underlying names and short forms, a strike (a partial strike matches by prefix), CE/PE/call/put/C/P,
+ * a month name and an optional day. Nearest expiry first.
+ */
+export function searchContracts(raw: string, limit = 14): SearchHit[] {
+  const text = raw.toLowerCase().replace(/(\d+)\s*k\b/g, (_m, n) => String(Number(n) * 1000)).replace(/(\d)(ce|pe|call|put|c|p)\b/g, "$1 $2");
+  const toks = text.split(/[\s,\-/]+/).filter(Boolean);
+  let under: string | null = null, kind: "CE" | "PE" | null = null, strikeTxt = "", month = -1, day = -1;
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+    if (ALIASES[t]) under = ALIASES[t];
+    else if (/^(ce|call|c)$/.test(t)) kind = "CE";
+    else if (/^(pe|put|p)$/.test(t)) kind = "PE";
+    else if (MONTHS.includes(t.slice(0, 3)) && /^[a-z]+$/.test(t)) month = MONTHS.indexOf(t.slice(0, 3));
+    else if (/^\d+$/.test(t)) {
+      const n = Number(t);
+      if (n >= 1 && n <= 31 && t.length <= 2 && (MONTHS.includes((toks[i + 1] ?? "").slice(0, 3)) || MONTHS.includes((toks[i - 1] ?? "").slice(0, 3)))) day = n;
+      else if (!strikeTxt) strikeTxt = t;
+    }
+  }
+  if (!strikeTxt && !kind) return [];
+  const out: SearchHit[] = [];
+  for (const r of store.byKey.values()) {
+    if (under && r.name !== under) continue;
+    if (kind ? r.type !== kind : r.type === "FUT") continue;
+    if (strikeTxt && !String(r.strike).startsWith(strikeTxt)) continue;
+    if (month >= 0 && Number(r.expiry.slice(5, 7)) - 1 !== month) continue;
+    if (day >= 0 && Number(r.expiry.slice(8, 10)) !== day) continue;
+    out.push({ underlying: r.name, segment: r.type as "CE" | "PE", strike: r.strike, expiry: r.expiry, lot: r.lot });
+  }
+  const exact = (h: SearchHit) => (strikeTxt && String(h.strike) === strikeTxt ? 0 : 1);
+  out.sort((a, b) => exact(a) - exact(b) || a.expiry.localeCompare(b.expiry) || a.underlying.localeCompare(b.underlying) || (a.strike ?? 0) - (b.strike ?? 0));
+  return out.slice(0, limit);
+}
