@@ -1,3 +1,4 @@
+import { labelOf } from "./constants";
 import { parseInstrumentKey, type InstrumentRef } from "@/lib/types";
 
 export const inr = (n: number) => (n < 0 ? "-" : "") + "₹" + Math.abs(Math.round(n)).toLocaleString("en-IN");
@@ -11,11 +12,12 @@ const shortDate = (iso: string) =>
   new Date(iso + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
 export function nameOf(ref: InstrumentRef): string {
-  if (ref.segment === "EQ") return ref.underlying;
+  const u = labelOf(ref.underlying);
+  if (ref.segment === "EQ") return u;
   const e = ref.expiry ? shortDate(ref.expiry) : "";
   return ref.segment === "FUT"
-    ? `${ref.underlying} FUT ${e}`
-    : `${ref.underlying} ${ref.strike} ${ref.segment} ${e}`;
+    ? `${u} Fut ${e}`
+    : `${u} ${ref.strike} ${ref.segment} ${e}`;
 }
 
 export const nameOfKey = (key: string) => nameOf(parseInstrumentKey(key));

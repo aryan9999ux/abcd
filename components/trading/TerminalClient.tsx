@@ -11,7 +11,7 @@ import { marketOpen } from "@/lib/engine/pure";
 import { orderTypeAt, postJSON } from "./api";
 import { mergeLive, pushTick } from "./candles";
 import ChartPanel from "./ChartPanel";
-import { STOCK_LEVERAGE, SYMBOLS, WATCHLIST, isIndexFO } from "./constants";
+import { STOCK_LEVERAGE, SYMBOLS, WATCHLIST, isIndexFO, labelOf, headlineOf } from "./constants";
 import { dateTime, inr, nameOf, nameOfKey, num, phaseLabel, statusLabel, timeOnly } from "./format";
 import { Meter } from "./Meter";
 import { accountMetrics, livePrice, positionPnl } from "./metrics";
@@ -354,7 +354,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               <div className="dk-idx">
                 {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => { const c = chg(k); return (
                   <button key={k} onClick={() => openInst({ underlying: k, segment: "FUT", expiry: contracts.specs[k]?.futExpiries[0] }, "home")}>
-                    <small>{k}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
+                    <small>{headlineOf(k)}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
                     <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "▲" : "▼"} ${Math.abs(c.pc).toFixed(2)}%` : "—"}</span>
                   </button>
                 ); })}
@@ -383,7 +383,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   <div className="dk-h"><h2>Biggest movers</h2></div>
                   {movers.map(({ w }) => (
                     <button key={w.k} className="dk-row" onClick={() => openInst({ underlying: w.k, segment: "EQ" }, "home")}>
-                      <span><b>{w.k}</b><small>{w.n}</small></span>{priceCell(w.k)}
+                      <span><b>{labelOf(w.k)}</b><small>{w.n}</small></span>{priceCell(w.k)}
                     </button>
                   ))}
                 </section>
@@ -400,7 +400,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   <div key={w.k}>
                     {(i === 0 || arr[i - 1].fo !== w.fo) && <div className="dk-sep">{w.fo ? "Index futures and options" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
                     <button className="dk-row" onClick={() => openInst(w.fo ? { underlying: w.k, segment: "FUT", expiry: contracts.specs[w.k]?.futExpiries[0] } : { underlying: w.k, segment: "EQ" }, "watch")}>
-                      <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>{priceCell(w.k)}
+                      <span><b>{labelOf(w.k)}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>{priceCell(w.k)}
                     </button>
                   </div>
                 ))}
@@ -457,7 +457,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 disabled={!!blockedReason}
               />
               <div className="dk-tabs">
-                {["NIFTY", "BANKNIFTY", "SENSEX"].map((u) => <button key={u} aria-pressed={sel.underlying === u} onClick={() => ql(u)}>{u}</button>)}
+                {["NIFTY", "BANKNIFTY", "SENSEX"].map((u) => <button key={u} aria-pressed={sel.underlying === u} onClick={() => ql(u)}>{labelOf(u)}</button>)}
               </div>
             </section>
           )}
@@ -608,7 +608,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 {(i === 0 || wl[i - 1].fo !== w.fo) && <div className="dx-sep">{w.fo ? "Index F&O" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
                 <div className="dx-wrow" aria-current={sel.underlying === w.k}>
                   <button className="main" onClick={() => { pickUnderlying(w.k); setCentre("chart"); }}>
-                    <span><b>{w.k}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>
+                    <span><b>{labelOf(w.k)}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>
                     <span className="px"><Px v={c?.px} text={c ? num(c.px) : "—"} className="pxv" /><small className={c ? (c.d >= 0 ? "tr-up" : "tr-down") : ""}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : "—"}</small></span>
                   </button>
                   <span className="acts"><button className="b" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Buy" })); }} aria-label={`Buy ${w.k}`}>B</button><button className="s" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Sell" })); }} aria-label={`Sell ${w.k}`}>S</button></span>
