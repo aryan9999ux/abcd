@@ -35,7 +35,7 @@
 .dk-link { border: 0; background: none; color: var(--hi); font: 600 .85rem var(--f-body); cursor: pointer; }
 .dk-empty { color: var(--muted); font-size: .9rem; margin: 6px 0 4px; padding: 0 2px; } .dk-empty.big { text-align: center; padding: 40px 12px; }
 .dk-sep { padding: 12px 16px 6px; font: 600 .78rem var(--f-body); color: var(--muted); }
-.dk-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 13px 16px; border: 0; background: none; color: var(--fg); text-align: left; font: inherit; cursor: pointer; text-decoration: none; border-top: 1px solid var(--line); }
+.dk-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 16px; border: 0; background: none; color: var(--fg); text-align: left; font: inherit; cursor: pointer; text-decoration: none; border-top: 1px solid var(--line); }
 .dk-card:not(.flush) .dk-row { padding-inline: 0; }
 .dk-row:first-child, .dk-sep + .dk-row, .dk-h + .dk-row { border-top: 0; }
 .dk-row:hover { background: color-mix(in srgb, var(--surface2) 60%, transparent); } .dk-row.static { cursor: default; }
@@ -70,7 +70,7 @@
 .dk-qh { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px; flex-wrap: wrap; }
 .dk-qh b { font: 650 1.05rem var(--f-display); margin-right: 8px; }
 .dk-q { text-align: right; display: grid; } .dk-q .tr-mono { font-size: 1.35rem; font-weight: 650; } .dk-q small { font: 600 .8rem var(--f-mono); }
-.dk-chart { height: 380px; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.dk-chart { height: min(62dvh, 520px); min-height: 380px; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .dk-chart > * { flex: 1; min-height: 0; }
 .dk-cur { display: flex; justify-content: space-between; align-items: center; } .dk-cur span { display: grid; gap: 2px; } .dk-cur b { font: 600 .92rem var(--f-mono); }
 .dk-buy { position: fixed; left: 0; right: 0; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); z-index: 25; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 94%, transparent); border-top: 1px solid var(--line); }
@@ -121,6 +121,9 @@
 
 /* phones: the chain keeps strike, CE and PE; IV and delta live on desktop */
 @media (max-width: 999px) {
-  .dk-chainwrap table th:nth-child(1), .dk-chainwrap table td:nth-child(1), .dk-chainwrap table th:nth-child(2), .dk-chainwrap table td:nth-child(2),
+  .dk-chainwrap table th:nth-child(1), .dk-chainwrap table td:nth-child(1):not(.tr-chainempty), .dk-chainwrap table th:nth-child(2), .dk-chainwrap table td:nth-child(2),
   .dk-chainwrap table th:nth-child(6), .dk-chainwrap table td:nth-child(6), .dk-chainwrap table th:nth-child(7), .dk-chainwrap table td:nth-child(7) { display: none; }
+  .dk-chainwrap .tr-chainempty { display: table-cell; }
+  .dk-chainwrap .tr-chainhead { display: grid; grid-template-columns: 1fr auto auto; gap: 10px 14px; padding: 10px 12px; }
+  .dk-chainwrap .tr-chainhead label { width: auto; }
 }

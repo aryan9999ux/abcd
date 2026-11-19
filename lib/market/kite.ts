@@ -181,7 +181,7 @@ export async function fetchInstrumentsCsv(exchange: "NFO" | "BFO" | "NSE" | "BSE
   return res.text();
 }
 
-export type KiteInterval = "minute" | "5minute" | "15minute";
+export type KiteInterval = "minute" | "5minute" | "15minute" | "30minute" | "60minute" | "day";
 
 /** Real historical candles: [timestamp, open, high, low, close, volume]. */
 export async function fetchCandles(token: number, interval: KiteInterval, from: string, to: string) {

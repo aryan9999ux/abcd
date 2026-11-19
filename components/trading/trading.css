@@ -313,3 +313,16 @@
 .tr-sres-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .tr-sres-row:last-child { border-bottom: 0; } .tr-sres-row:hover, .tr-sres-row:focus-visible { background: var(--accent-soft); outline: none; }
 .tr-sres-row span:first-child { display: grid; gap: 2px; } .tr-sres-row b { font-weight: 650; font-size: .92rem; } .tr-sres-row small { color: var(--muted); font-size: .74rem; }
+
+/* Empty states */
+.tr-es { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 36px 20px; color: var(--muted); letter-spacing: 0; }
+.tr-es.compact { padding: 20px 16px; }
+.tr-es-ic { opacity: .7; margin-bottom: 4px; }
+.tr-es b { color: var(--fg); font-weight: 650; font-size: .95rem; }
+.tr-es p { margin: 0; max-width: 30ch; font-size: .84rem; line-height: 1.45; }
+.tr-es-act { margin-top: 10px; display: flex; gap: 8px; }
+.tr-chainempty { padding: 0 !important; text-align: center !important; }
+@media (max-width:760px){ .tr-cbody > .tr-hint, .tr-cw .tr-hint { display:none; } }
+.tr-chainempty, .tr-chainempty * { white-space: normal !important; }
+.tr-chainempty .tr-es { max-width: 100%; }
+.tr-cbody > .tr-hint, .dk-chainwrap .tr-hint { padding: 8px 14px; }

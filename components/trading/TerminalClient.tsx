@@ -19,6 +19,7 @@ import NoAccounts from "./NoAccounts";
 import OptionChain from "./OptionChain";
 import { RiskPanel } from "./StatusStrip";
 import RulesPanel from "./RulesPanel";
+import { mergeByTime } from "./candles";
 import SearchResults from "./SearchResults";
 import { useContractSearch } from "./useContractSearch";
 import SlWarning from "./SlWarning";
@@ -30,6 +31,7 @@ import "./dx.css";
 import { useMedia } from "./useMedia";
 import type { AccountRow, Candle, PlanRow } from "./types";
 import { useContracts } from "./useContracts";
+import { EmptyState } from "./EmptyState";
 import { useQuotes } from "./useQuotes";
 import { useToast } from "./useToast";
 import { useTraderData } from "./useTraderData";
@@ -105,21 +107,28 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   }, [ltp, key]);
 
   // Real exchange candles for the chart, refreshed every 30 seconds.
+  const loadedRef = useRef(new Set<string>());
   const [hist, setHist] = useState<{ k: string; candles: Candle[]; note: string | null }>({ k: "", candles: [], note: null });
   useEffect(() => {
     if (!contracts.ready && fo) return;
     if (fo && !sel.expiry) return;
     let stop = false;
     const k = `${key}|${tf}`;
+    const loaded = loadedRef.current;
     async function load() {
       try {
         const q = new URLSearchParams({ underlying: sel.underlying, segment: sel.segment, tf: String(tf) });
+        const again = loaded.has(k);
+        if (again) q.set("recent", "1");
         if (sel.strike != null) q.set("strike", String(sel.strike));
         if (sel.expiry) q.set("expiry", sel.expiry);
         const res = await fetch(`/api/history?${q}`, { cache: "no-store" });
         const j = (await res.json()) as { ok: boolean; candles?: Candle[]; available?: boolean; error?: string };
         if (stop) return;
-        if (j.ok) setHist({ k, candles: j.candles ?? [], note: j.available === false ? "No chart history for this contract." : null });
+        if (j.ok) {
+          if (j.available !== false) loaded.add(k);
+          setHist((h) => ({ k, candles: again && h.k === k ? mergeByTime(h.candles, j.candles ?? []) : j.candles ?? [], note: j.available === false ? "No chart history for this contract." : null }));
+        }
         else setHist((h) => ({ k, candles: h.k === k ? h.candles : [], note: j.error ?? "Chart history is not available right now." }));
       } catch { /* retry on the next interval */ }
     }
@@ -139,7 +148,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   const candles = useMemo(() => {
     const h = hist.k === `${key}|${tf}` ? hist.candles : [];
-    return mergeLive(h, live.current.get(key) ?? [], tf).slice(-90);
+    return mergeLive(h, live.current.get(key) ?? [], tf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version, hist, key, tf]);
 
@@ -351,7 +360,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               <RiskPanel account={account} m={m} openCount={accPositions.length} />
               <section className="dk-card">
                 <div className="dk-h"><h2>Open positions</h2><button className="dk-link" onClick={() => setScreen("pos")}>See all</button></div>
-                {!accPositions.length ? <p className="dk-empty">No open positions. Pick a symbol from the watchlist to trade.</p> : accPositions.slice(0, 3).map((p) => { const pl = positionPnl(p, spots); return (
+                {!accPositions.length ? <EmptyState compact icon="pos" title="No open positions" hint="Pick a symbol from the watchlist to trade." action={<button className="tr-btn sm" onClick={() => setScreen("watch")}>Open watchlist</button>} /> : accPositions.slice(0, 3).map((p) => { const pl = positionPnl(p, spots); return (
                   <button key={p.id} className="dk-row" onClick={() => openInst(parseInstrumentKey(p.instrument), "home")}>
                     <span><b>{nameOfKey(p.instrument)}</b><small>{p.side} · {p.qty} @ {num(p.avg_price)}</small></span>
                     <b className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</b>
@@ -444,7 +453,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
           {screen === "ord" && (
             <div className="dk-stack">
-              {!acctOrders.length && <p className="dk-empty big">No orders yet. Orders you place will show up here.</p>}
+              {!acctOrders.length && <EmptyState icon="list" title="No orders yet" hint="Orders you place will show up here." />}
               {acctOrders.map((o) => (
                 <div key={o.id} className="dk-order">
                   <span className={"dk-side " + (o.side === "Buy" ? "b" : "s")}>{o.side}</span>
@@ -463,8 +472,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 <b className={"dk-big " + (openPl >= 0 ? "tr-up" : "tr-down")}>{inr(openPl)}</b>
                 <button className="tr-btn sm" onClick={squareAll} disabled={!accPositions.length || !active}>{confirmAll ? "Tap again to confirm" : "Exit all"}</button>
               </section>
-              {data.loading && <p className="dk-empty">Loading positions…</p>}
-              {!data.loading && !accPositions.length && <p className="dk-empty big">No open positions. Use the watchlist or option chain to place a trade.</p>}
+              {data.loading && <EmptyState compact icon="pos" title="Loading positions…" />}
+              {!data.loading && !accPositions.length && <EmptyState icon="pos" title="No open positions" hint="Use the watchlist or option chain to place a trade." action={<button className="tr-btn sm" onClick={() => setScreen("watch")}>Open watchlist</button>} />}
               {accPositions.map((p) => { const pl = positionPnl(p, spots), px = livePrice(p.instrument, spots); return (
                 <div key={p.id} className="dk-pos">
                   <button className="dk-posmain" onClick={() => openInst(parseInstrumentKey(p.instrument), "pos")}>
@@ -493,7 +502,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               {m && <RulesPanel account={account} m={m} openCount={accPositions.length} />}
               <section className="dk-card flush">
                 <div className="dk-h pad"><h2>Recent trades</h2></div>
-                {!acctTrades.length && <p className="dk-empty">No trades yet.</p>}
+                {!acctTrades.length && <EmptyState compact icon="trade" title="No trades yet" hint="Closed and filled trades appear here." />}
                 {acctTrades.slice(0, 30).map((t) => (
                   <div key={t.id} className="dk-row static">
                     <span><b>{nameOfKey(t.instrument)}</b><small>{t.side} · {t.qty} @ {num(t.price)} · {timeOnly(t.executed_at)}</small></span>

@@ -10,9 +10,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TF: Record<string, { interval: KiteInterval; days: number }> = {
-  "1": { interval: "minute", days: 5 },
-  "5": { interval: "5minute", days: 12 },
-  "15": { interval: "15minute", days: 30 },
+  "1": { interval: "minute", days: 10 },
+  "5": { interval: "5minute", days: 30 },
+  "15": { interval: "15minute", days: 60 },
+  "30": { interval: "30minute", days: 90 },
+  "60": { interval: "60minute", days: 180 },
+  "1440": { interval: "day", days: 730 },
 };
 const ist = (ms: number) => new Date(ms + 330 * 60000).toISOString().slice(0, 19).replace("T", " ");
 const cache = new Map<string, { at: number; candles: Candle[] }>();
@@ -32,8 +35,11 @@ export function GET(req: Request) {
     const token = segment === "EQ" ? spotToken(underlying) : instOf(ref)?.token;
     if (!token) return { candles: [] as Candle[], available: false };
     const ck = `${token}|${tf.interval}`;
+    // The first load sends the whole history; later refreshes ask for just the newest bars (recent=1).
+    const recent = q.get("recent") === "1";
+    const out = (c: Candle[]) => ({ candles: recent ? c.slice(-40) : c, available: true });
     const hit = cache.get(ck);
-    if (hit && Date.now() - hit.at < 15_000) return { candles: hit.candles, available: true };
+    if (hit && Date.now() - hit.at < 15_000) return out(hit.candles);
     const now = Date.now();
     let rows;
     try {
@@ -41,8 +47,8 @@ export function GET(req: Request) {
     } catch (e) {
       throw new HttpError(502, e instanceof Error ? e.message : "Chart history is not available right now.");
     }
-    const candles: Candle[] = rows.slice(-400).map(([t, o, h, l, c]) => ({ t: Date.parse(t.replace(/([+-]\d\d)(\d\d)$/, "$1:$2")), o, h, l, c }));
+    const candles: Candle[] = rows.slice(-5000).map(([t, o, h, l, c]) => ({ t: Date.parse(t.replace(/([+-]\d\d)(\d\d)$/, "$1:$2")), o, h, l, c }));
     cache.set(ck, { at: now, candles });
-    return { candles, available: true };
+    return out(candles);
   });
 }

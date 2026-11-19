@@ -1,4 +1,5 @@
 "use client";
+import { EmptyState } from "./EmptyState";
 import { useEffect, useState } from "react";
 import type { ChainRow, InstrumentRef, Side } from "@/lib/types";
 import { num } from "./format";
@@ -103,7 +104,7 @@ export default function OptionChain({ underlying, spot, expiries, expiry, lot, o
             <tr><th>IV</th><th>Δ</th><th>CE</th><th>Strike</th><th>PE</th><th>Δ</th><th>IV</th></tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan={7} className="tr-empty">{state === "error" ? "Could not load the chain. Retrying…" : "Loading the live chain from the exchange…"}</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={7} className="tr-chainempty"><EmptyState compact icon="chain" title={state === "error" ? "Chain unavailable right now" : "Loading the live chain…"} hint={state === "error" ? "Retrying automatically. If it persists, the exchange feed may be disconnected." : "Fetching strikes from the exchange."} /></td></tr>}
             {rows.map((r) => {
               const ceItm = spot != null && r.strike < spot, peItm = spot != null && r.strike > spot;
               const ce: InstrumentRef = { underlying, segment: "CE", strike: r.strike, expiry };
