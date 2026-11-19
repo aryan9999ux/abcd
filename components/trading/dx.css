@@ -41,9 +41,9 @@
 .dx-wrow .acts button { width: 28px; height: 28px; border: 0; border-radius: 8px; color: #fff; font: 700 .76rem var(--f-body); cursor: pointer; } .dx-wrow .b { background: var(--up); } .dx-wrow .s { background: var(--down); }
 
 /* centre */
-.dx-ih { flex: none; display: flex; align-items: center; gap: 18px; padding: 7px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.dx-in h1 { font: 700 .98rem var(--f-display); margin: 0; letter-spacing: -.02em; } .dx-in small { color: var(--muted); font-size: .72rem; }
-.dx-iq { display: flex; align-items: baseline; gap: 10px; } .dx-iq .tr-mono { font-size: 1.1rem; font-weight: 650; } .dx-iq small { font-size: .78rem; font-weight: 600; }
+.dx-ih { flex: none; display: flex; align-items: center; gap: 14px; padding: 6px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.dx-in h1 { font: 600 .9rem var(--f-body); margin: 0; letter-spacing: 0; } .dx-in small { color: var(--muted); font-size: .7rem; font-weight: 400; letter-spacing: 0; }
+.dx-iq { display: flex; align-items: baseline; gap: 10px; } .dx-iq .tr-mono { font-size: .98rem; font-weight: 600; letter-spacing: 0; } .dx-iq small { font-size: .74rem; font-weight: 500; opacity: .9; }
 .dx-tabs { margin-left: auto; display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg2); }
 .dx-tabs button { border: 0; background: none; color: var(--muted); padding: 7px 14px; border-radius: 8px; font: 650 .84rem var(--f-body); cursor: pointer; } .dx-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
 .dx-cbody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
