@@ -393,7 +393,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
           {screen === "watch" && (
             <div className="dk-stack">
-              <input className="dk-search" placeholder="Search symbol or option, e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols and options" />
+              <input className="dk-search" placeholder="Search e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }} onBlur={() => setTimeout(() => setQ(""), 200)} aria-label="Search symbols and options" />
               <SearchResults q={q} {...found} onPick={(ref) => { openInst(ref, "watch"); setQ(""); }} />
               <section className="dk-card flush">
                 {WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase()) || w.n.toLowerCase().includes(q.trim().toLowerCase())).map((w, i, arr) => (
@@ -600,7 +600,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       <div className="dx-grid" style={{ gridTemplateRows: `minmax(0, 1fr) ${dockH}px` }}>
         <aside className="dx-panel dx-wl" aria-label="Watchlist">
           <div className="dx-ph"><h2>Watchlist</h2>{source === "demo" && <span className="dx-tag">Sample prices</span>}</div>
-          <input className="dx-search" placeholder="Search symbol or option, e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search symbols and options" />
+          <input className="dx-search" placeholder="Search e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }} onBlur={() => setTimeout(() => setQ(""), 200)} aria-label="Search symbols and options" />
           <div style={{ margin: "0 12px 8px" }}><SearchResults q={q} {...found} onPick={(ref) => { pick(ref); setCentre("chart"); setQ(""); }} /></div>
           <div className="dx-wlist">
             {wl.map((w, i) => { const c = chg(w.k); return (
@@ -620,8 +620,9 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
         <section className="dx-panel dx-centre">
           <div className="dx-ih">
-            <div className="dx-in"><h1>{nameOf(sel)}</h1><small>{fo ? `Lot ${lot ?? "—"}${sel.expiry ? ` · Expiry ${new Date(sel.expiry + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}` : "NSE · Cash"}</small></div>
+            <div className="dx-in"><h1>{nameOf(sel)}</h1></div>
             <div className="dx-iq"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</small>}</div>
+            <div className="dx-meta"><small>{fo ? `Lot ${lot ?? "—"}${sel.expiry ? ` · Expiry ${new Date(sel.expiry + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : ""}` : "NSE · Cash"}</small></div>
             <div className="dx-tabs" role="tablist">
               <button role="tab" aria-selected={centre === "chart"} onClick={() => setCentre("chart")}>Chart</button>
               <button role="tab" aria-selected={centre === "chain"} onClick={() => { if (!selSpec) pickUnderlying("NIFTY"); setCentre("chain"); }}>Option chain</button>

@@ -77,3 +77,19 @@
 .dx-resize i { width: 44px; height: 4px; border-radius: 4px; background: var(--line); transition: background .15s; }
 .dx-resize:hover i { background: var(--accent); }
 .dx-dock .dx-dtabs { padding-top: 6px; }
+
+/* Header: name, price, change on one line; contract details small and quiet */
+.dx-ih { flex-wrap: nowrap; gap: 12px; }
+.dx-in h1 { white-space: nowrap; } .dx-iq { white-space: nowrap; }
+.dx-meta { min-width: 0; } .dx-meta small { color: var(--muted); font-size: .7rem; opacity: .8; white-space: nowrap; letter-spacing: 0; }
+.dx-ih { align-items: baseline; } .dx-tabs { align-self: center; }
+/* No visible scrollbars anywhere in the terminal (content still scrolls) */
+.dx *, .dk, .dk *, .tr * { scrollbar-width: none; -ms-overflow-style: none; }
+.dx *::-webkit-scrollbar, .dk::-webkit-scrollbar, .dk *::-webkit-scrollbar, .tr *::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.dx .dx-cbody, .dx .dx-dbody, .dx .dx-wlist, .dx .tr-scroll, .dx .dx-right { overflow-x: hidden !important; }
+.dx .tr-scroll.tall table { width: 100%; table-layout: fixed; }
+.dx .dx-dbody table { width: 100%; }
+.dx .dx-dbody td, .dx .dx-dbody th { white-space: normal; overflow-wrap: anywhere; }
+.dx-search { text-overflow: ellipsis; }
+.dx-search, .dk-search { box-sizing: border-box; }
+.dx .dx-search { width: calc(100% - 24px) !important; max-width: calc(100% - 24px); }
