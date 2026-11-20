@@ -35,6 +35,7 @@ import { EmptyState } from "./EmptyState";
 import { LevelCell } from "./LevelCell";
 import { Arrow } from "./Arrow";
 import { useQuotes } from "./useQuotes";
+import { useWatchlist } from "./useWatchlist";
 import { useToast } from "./useToast";
 import { useTraderData } from "./useTraderData";
 
@@ -78,6 +79,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   function toggleDock() { const n = dockH > 60 ? 44 : 260; setDockH(n); try { localStorage.setItem("edge-dockh", String(n)); } catch {} }
   const [q, setQ] = useState("");
   const found = useContractSearch(q);
+  const wlist = useWatchlist();
+  const [wEdit, setWEdit] = useState(false);
   const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "", super: false, target: "" });
   const [tf, setTf] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -90,9 +93,10 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     const ks = new Set<string>();
     if (sel.segment !== "EQ" && sel.expiry) ks.add(instrumentKey(sel));
     for (const p of data.positions) if (!p.instrument.includes("|EQ|")) ks.add(p.instrument);
+    for (const k of wlist.keys) if (k.includes("|")) ks.add(k);
     for (const o of data.orders) if (o.status === "pending" && !o.instrument.includes("|EQ|")) ks.add(o.instrument);
     return [...ks].slice(0, 40);
-  }, [sel, data.positions, data.orders]);
+  }, [sel, data.positions, data.orders, wlist.keys]);
   const { quotes: spots, prev, source, error: quoteError } = useQuotes(SYMBOLS, contractKeys);
 
   const spec = contracts.specs[sel.underlying];
@@ -302,6 +306,23 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const demoText = demoLeft == null ? "" : demoLeft > 86_400_000 ? `${Math.ceil(demoLeft / 86_400_000)} days left` : `${Math.max(1, Math.ceil(demoLeft / 3_600_000))} hours left`;
   const open = marketOpen(Date.now());
   const chg = (k: string) => { const px = spots[k], pv = prev[k]; return px != null && pv != null && pv ? { px, d: px - pv, pc: ((px - pv) / pv) * 100 } : null; };
+  /** One saved watchlist item: an underlying (index or stock) or a single contract. */
+  interface WEntry { k: string; title: string; sub: string; group: 0 | 1 | 2; ref: InstrumentRef }
+  const dmyShort = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const entryOf = (k: string): WEntry | null => {
+    if (k.includes("|")) {
+      const r = parseInstrumentKey(k);
+      if (!r.expiry) return null;
+      return { k, group: 2, ref: r, title: `${labelOf(r.underlying)} ${r.segment === "FUT" ? "Fut" : `${r.strike} ${r.segment}`}`, sub: `Expiry ${dmyShort(r.expiry)} · Lot ${contracts.specs[r.underlying]?.lot ?? "—"}` };
+    }
+    const w = WATCHLIST.find((x) => x.k === k);
+    if (!w) return null;
+    return { k, group: w.fo ? 0 : 1, title: labelOf(k), sub: w.fo ? `Lot ${contracts.specs[k]?.lot ?? "—"}` : w.n, ref: w.fo ? { underlying: k, segment: "FUT", expiry: contracts.specs[k]?.futExpiries[0] } : { underlying: k, segment: "EQ" } };
+  };
+  const wEntries = wlist.keys.map(entryOf).filter((e): e is WEntry => !!e).sort((a, b) => a.group - b.group);
+  const wGroup = ["Index F&O", `Stocks · ${STOCK_LEVERAGE}× intraday`, "Options & futures"];
+  /** The key that the star on the chart header adds or removes. */
+  const curWatchKey = sel.segment === "EQ" || idx ? sel.underlying : instrumentKey(sel);
   const movers = WATCHLIST.filter((w) => !w.fo).map((w) => ({ w, c: chg(w.k) })).filter((x) => x.c).sort((a, b) => Math.abs(b.c!.pc) - Math.abs(a.c!.pc)).slice(0, 4);
   const ql = (u: string) => { setSel({ underlying: u, segment: "FUT", expiry: contracts.specs[u]?.futExpiries[0] }); setScreen("chain"); };
 
@@ -423,17 +444,32 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           {screen === "watch" && (
             <div className="dk-stack">
               <input className="dk-search" placeholder="Search e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }} onBlur={() => setTimeout(() => setQ(""), 200)} aria-label="Search symbols and options" />
-              <SearchResults q={q} {...found} onPick={(ref) => { openInst(ref, "watch"); setQ(""); }} />
-              <section className="dk-card flush">
-                {WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase()) || w.n.toLowerCase().includes(q.trim().toLowerCase())).map((w, i, arr) => (
-                  <div key={w.k}>
-                    {(i === 0 || arr[i - 1].fo !== w.fo) && <div className="dk-sep">{w.fo ? "Index futures and options" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
-                    <button className="dk-row" onClick={() => openInst(w.fo ? { underlying: w.k, segment: "FUT", expiry: contracts.specs[w.k]?.futExpiries[0] } : { underlying: w.k, segment: "EQ" }, "watch")}>
-                      <span><b>{labelOf(w.k)}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>{priceCell(w.k)}
-                    </button>
-                  </div>
-                ))}
-              </section>
+              <SearchResults q={q} {...found} watched={wlist.has} onToggle={wlist.toggle} onPick={(ref) => { openInst(ref, "watch"); setQ(""); }} />
+              {(() => {
+                const t = q.trim().toLowerCase();
+                const contractish = /\d|\b(ce|pe|call|put)\b/i.test(t);
+                if (contractish) return null;
+                const rows: WEntry[] = t
+                  ? WATCHLIST.filter((w) => w.k.toLowerCase().includes(t) || w.n.toLowerCase().includes(t) || labelOf(w.k).toLowerCase().includes(t)).map((w) => entryOf(w.k)).filter((e): e is WEntry => !!e)
+                  : wEntries;
+                return (
+                  <section className="dk-card flush">
+                    {!t && <div className="dk-wbar"><span>{rows.length} saved</span><button onClick={() => setWEdit((v) => !v)}>{wEdit ? "Done" : "Edit"}</button></div>}
+                    {!rows.length && <div className="dx-wempty"><b>{t ? "No match" : "Your watchlist is empty"}</b><span>{t ? "Try another name." : "Search a symbol or a contract like 25700 PE and tap the star to add it."}</span>{!t && <button className="tr-btn sm" onClick={() => wlist.reset()}>Restore defaults</button>}</div>}
+                    {rows.map((w, i) => { const on = wlist.has(w.k); return (
+                      <div key={w.k}>
+                        {!t && (i === 0 || rows[i - 1].group !== w.group) && <div className="dk-sep">{wGroup[w.group]}</div>}
+                        <div className="dk-wline">
+                          <button className="dk-row" onClick={() => openInst(w.ref, "watch")}>
+                            <span><b>{w.title}</b><small>{w.sub}</small></span>{priceCell(w.k)}
+                          </button>
+                          {(wEdit || t) && <button className={"tr-star" + (on ? " on" : "")} onClick={() => wlist.toggle(w.k)} aria-label={on ? "Remove from watchlist" : "Add to watchlist"}>{on ? (t ? "★" : "×") : "☆"}</button>}
+                        </div>
+                      </div>
+                    ); })}
+                  </section>
+                );
+              })()}
             </div>
           )}
 
@@ -441,7 +477,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
             <div className="dk-inst">
               <section className="dk-card dk-chartcard">
                 <div className="dk-qh">
-                  <div><b>{chartTitle}</b>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
+                  <div><b>{chartTitle}</b><button className={"tr-star hd" + (wlist.has(curWatchKey) ? " on" : "")} onClick={() => wlist.toggle(curWatchKey)} aria-label={wlist.has(curWatchKey) ? "Remove from watchlist" : "Add to watchlist"}>{wlist.has(curWatchKey) ? "★" : "☆"}</button>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
                   <div className="dk-q"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={cChg >= 0 ? "tr-up" : "tr-down"}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%) <Arrow up={cChg >= 0} /></small>}</div>
                 </div>
                 <div className="dk-chart">
@@ -593,7 +629,6 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     </div>
   );
 
-  const wl = WATCHLIST.filter((w) => w.k.toLowerCase().includes(q.trim().toLowerCase()) || w.n.toLowerCase().includes(q.trim().toLowerCase()));
   const selSpec = isIndexFO(sel.underlying);
   const desktopUI = (
     <div className="dx tr">
@@ -635,26 +670,38 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         <aside className="dx-panel dx-wl" aria-label="Watchlist">
           <div className="dx-ph"><h2>Watchlist</h2>{source === "demo" && <span className="dx-tag">Sample prices</span>}</div>
           <input className="dx-search" placeholder="Search e.g. 25700 PE" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ(""); }} onBlur={() => setTimeout(() => setQ(""), 200)} aria-label="Search symbols and options" />
-          <div style={{ margin: "0 12px 8px" }}><SearchResults q={q} {...found} onPick={(ref) => { pick(ref); setCentre("chart"); setQ(""); }} /></div>
+          <div style={{ margin: "0 12px 8px" }}><SearchResults q={q} {...found} watched={wlist.has} onToggle={wlist.toggle} onPick={(ref) => { pick(ref); setCentre("chart"); setQ(""); }} /></div>
           <div className="dx-wlist">
-            {wl.map((w, i) => { const c = chg(w.k); return (
-              <div key={w.k}>
-                {(i === 0 || wl[i - 1].fo !== w.fo) && <div className="dx-sep">{w.fo ? "Index F&O" : `Stocks · ${STOCK_LEVERAGE}× intraday`}</div>}
-                <div className="dx-wrow" aria-current={sel.underlying === w.k}>
-                  <button className="main" onClick={() => { pickUnderlying(w.k); setCentre("chart"); }}>
-                    <span><b>{labelOf(w.k)}</b><small>{w.fo ? `Lot ${contracts.specs[w.k]?.lot ?? "—"}` : w.n}</small></span>
-                    <span className="px"><Px v={c?.px} text={c ? num(c.px) : "—"} className="pxv" /><small className={c ? (c.d >= 0 ? "tr-up" : "tr-down") : ""}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : "—"}</small></span>
-                  </button>
-                  <span className="acts"><button className="b" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Buy" })); }} aria-label={`Buy ${w.k}`}>B</button><button className="s" onClick={() => { pickUnderlying(w.k); setTicket((t) => ({ ...t, side: "Sell" })); }} aria-label={`Sell ${w.k}`}>S</button></span>
+            {(() => {
+              const t = q.trim().toLowerCase();
+              const contractish = /\d|\b(ce|pe|call|put)\b/i.test(t);
+              const rows: WEntry[] = t && !contractish
+                ? WATCHLIST.filter((w) => w.k.toLowerCase().includes(t) || w.n.toLowerCase().includes(t) || labelOf(w.k).toLowerCase().includes(t)).map((w) => entryOf(w.k)).filter((e): e is WEntry => !!e)
+                : t ? [] : wEntries;
+              if (!rows.length && !t) return <div className="dx-wempty"><b>Your watchlist is empty</b><span>Search a symbol or a contract like 25700 PE and tap the star to add it.</span><button className="tr-btn sm" onClick={() => wlist.reset()}>Restore defaults</button></div>;
+              return rows.map((w, i) => { const c = chg(w.k); const on = wlist.has(w.k); return (
+                <div key={w.k}>
+                  {!t && (i === 0 || rows[i - 1].group !== w.group) && <div className="dx-sep">{wGroup[w.group]}</div>}
+                  <div className="dx-wrow" aria-current={w.group === 2 ? key === w.k : sel.underlying === w.k}>
+                    <button className="main" onClick={() => { if (w.group === 2) pick(w.ref); else pickUnderlying(w.k); setCentre("chart"); setQ(""); }}>
+                      <span><b>{w.title}</b><small>{w.sub}</small></span>
+                      <span className="px"><Px v={c?.px} text={c ? num(c.px) : "—"} className="pxv" /><small className={c ? (c.d >= 0 ? "tr-up" : "tr-down") : ""}>{c ? `${c.d >= 0 ? "+" : ""}${c.pc.toFixed(2)}%` : "—"}</small></span>
+                    </button>
+                    <span className="acts">
+                      <button className="b" onClick={() => { if (w.group === 2) pick(w.ref, "Buy"); else { pickUnderlying(w.k); setTicket((tk) => ({ ...tk, side: "Buy" })); } }} aria-label={`Buy ${w.title}`}>B</button>
+                      <button className="s" onClick={() => { if (w.group === 2) pick(w.ref, "Sell"); else { pickUnderlying(w.k); setTicket((tk) => ({ ...tk, side: "Sell" })); } }} aria-label={`Sell ${w.title}`}>S</button>
+                      <button className={"st" + (on ? " on" : "")} onMouseDown={(e) => e.preventDefault()} onClick={() => wlist.toggle(w.k)} aria-label={on ? `Remove ${w.title} from watchlist` : `Add ${w.title} to watchlist`} title={on ? "Remove from watchlist" : "Add to watchlist"}>{on ? "×" : "+"}</button>
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ); })}
+              ); });
+            })()}
           </div>
         </aside>
 
         <section className="dx-panel dx-centre">
           <div className="dx-ih">
-            <div className="dx-in"><h1>{chartTitle}</h1></div>
+            <div className="dx-in"><h1>{chartTitle}</h1><button className={"tr-star hd" + (wlist.has(curWatchKey) ? " on" : "")} onClick={() => wlist.toggle(curWatchKey)} aria-label={wlist.has(curWatchKey) ? "Remove from watchlist" : "Add to watchlist"} title={wlist.has(curWatchKey) ? "Remove from watchlist" : "Add to watchlist"}>{wlist.has(curWatchKey) ? "★" : "☆"}</button></div>
             <div className="dx-iq"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={"tr-mono " + (cChg >= 0 ? "tr-up" : "tr-down")}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%)<Arrow up={cChg >= 0} /></small>}</div>
             {isIndexFO(sel.underlying) && sel.segment === "FUT" && centre === "chart" && (
               <div className="dx-seg" role="group" aria-label="Chart source"><button aria-pressed={idx} onClick={() => setIdxView(true)}>Index</button><button aria-pressed={!idx} onClick={() => setIdxView(false)}>Futures</button></div>

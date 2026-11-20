@@ -344,3 +344,13 @@
 .dk-lv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 2px 2px; color: var(--muted); font-size: .8rem; }
 .dk-lv > span { display: inline-flex; align-items: center; gap: 2px; }
 .tr-lvl.tr-down .tr-mono { color: var(--down); } .tr-lvl.tr-up .tr-mono { color: var(--up); }
+
+/* Watchlist: star toggles, empty state, edit bar */
+.tr-star { border: 0; background: none; color: var(--muted); font-size: 1.15rem; line-height: 1; cursor: pointer; padding: 6px 10px; border-radius: 8px; }
+.tr-star:hover { color: var(--fg); background: var(--surface2); } .tr-star.on { color: #f5b942; }
+.tr-star.hd { font-size: 1.05rem; padding: 2px 6px; margin-left: 4px; vertical-align: middle; }
+.tr-sres-line { display: flex; align-items: center; border-bottom: 1px solid var(--line); } .tr-sres-line:last-child { border-bottom: 0; } .tr-sres-line .tr-sres-row { border-bottom: 0; flex: 1; min-width: 0; } .tr-sres-line .tr-star { margin-right: 6px; }
+.dx-wempty, .dk-card .dx-wempty { display: grid; gap: 8px; justify-items: start; padding: 18px 16px; color: var(--muted); font-size: .84rem; } .dx-wempty b { color: var(--fg); font-size: .92rem; }
+.dk-wbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 0; color: var(--muted); font-size: .78rem; } .dk-wbar button { border: 0; background: none; color: var(--hi, var(--accent)); font: 650 .84rem var(--f-body); cursor: pointer; padding: 6px 0; }
+.dk-wline { display: flex; align-items: center; } .dk-wline .dk-row { flex: 1; min-width: 0; }
+.dx-wrow .acts .st { background: var(--surface2); color: var(--fg); } .dx-wrow .acts .st.on:hover { background: var(--down); color: #fff; }
