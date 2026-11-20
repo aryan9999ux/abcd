@@ -44,6 +44,8 @@ export interface PositionRow {
   side: "Buy" | "Sell";
   qty: number;
   avg_price: number;
+  stop_loss?: number | null;
+  take_profit?: number | null;
   opened_at: string;
 }
 

@@ -14,10 +14,18 @@ export const placeOrderSchema = z.object({
   qty: z.number().int("Quantity must be a whole number").positive().max(1_000_000),
   price: z.number().positive().max(10_000_000).nullish(),
   stopLoss: z.number().positive().max(10_000_000).nullish(),
+  /** Super order: the price at which the position is closed in profit. Needs a stop loss too. */
+  target: z.number().positive().max(10_000_000).nullish(),
   /** The price the trader saw when clicking. Market orders are refused if the live price has moved too far from it. */
   seenPrice: z.number().positive().max(10_000_000).nullish(),
 });
 export const cancelOrderSchema = z.object({ accountId: uuid, orderId: uuid });
+export const levelsSchema = z.object({
+  accountId: uuid,
+  instrument: z.string().min(3).max(120),
+  stopLoss: z.number().positive().max(10_000_000).nullable().optional(),
+  target: z.number().positive().max(10_000_000).nullable().optional(),
+});
 export const closePositionSchema = z.object({ accountId: uuid, instrument: z.string().min(3).max(120) });
 export const closeAllSchema = z.object({ accountId: uuid });
 export const checkoutSchema = z.object({ planKey: z.string().min(1).max(40), accountSize: z.number().int().positive() });

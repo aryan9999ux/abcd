@@ -6,7 +6,8 @@ import type { Candle } from "./types";
 import "./chart.css";
 
 export interface ChartPending { id: string; side: Side; price: number }
-export interface ChartPosition { entry: number; side: Side; pnl: number }
+export interface ChartPosition { entry: number; side: Side; pnl: number; qty: number; stop: number | null; target: number | null }
+type Level = "stop" | "target";
 
 interface Props {
   title: string;
@@ -21,6 +22,8 @@ interface Props {
   disabledText?: string;
   note?: string;
   onOrder: (side: Side, price: number, qty: number) => Promise<boolean>;
+  /** Move (or clear, with null) the stop loss or target of the open position. */
+  onLevels?: (which: Level, price: number | null) => Promise<boolean>;
 }
 
 type Tool = "cursor" | "trend" | "hline" | "ray" | "rect" | "fib" | "text";
@@ -33,6 +36,7 @@ type Drag =
   | { kind: "handle"; id: string; idx: number }
   | { kind: "body"; id: string; i0: number; p0: number; orig: Pt[] }
   | { kind: "create"; x0: number; y0: number }
+  | { kind: "level"; which: Level; moved: boolean }
   | { kind: "pinch"; d0: number; bw0: number; i0: number };
 
 const TFS: [number, string][] = [[1, "1m"], [5, "5m"], [15, "15m"], [30, "30m"], [60, "1h"], [1440, "D"]];
@@ -115,6 +119,8 @@ export default function ChartPanel(p: Props) {
   const [sel, setSel] = useState<string | null>(null);
   const [count, setCount] = useState(0);
   const [pop, setPop] = useState<{ x: number; y: number; price: number } | null>(null);
+  const levelDrag = useRef<{ which: Level; price: number } | null>(null);
+  const [lvlPop, setLvlPop] = useState<{ which: Level; price: string; x: number; y: number; edit: boolean } | null>(null);
   const [textEdit, setTextEdit] = useState<{ x: number; y: number; pt: Pt } | null>(null);
   const [qty, setQty] = useState("1");
   const [busy, setBusy] = useState(false);
@@ -292,6 +298,15 @@ export default function ChartPanel(p: Props) {
     };
     if (position) tag(position.entry, `${position.side === "Buy" ? "B" : "S"} ${num(position.entry)}  ${inr(position.pnl)}`, position.pnl >= 0 ? up : dn, "#10131a", false);
     pending.forEach((o) => tag(o.price, `Order ${o.side[0]} ${num(o.price)}`, acc, accFg, true));
+    if (position) {
+      const lv = levelDrag.current, dir = position.side === "Buy" ? 1 : -1;
+      for (const k of ["stop", "target"] as Level[]) {
+        const val = lv && lv.which === k ? lv.price : k === "stop" ? position.stop : position.target;
+        if (val == null || !(val > 0)) continue;
+        const pnl = (val - position.entry) * position.qty * dir;
+        tag(val, `${k === "stop" ? "SL" : "Target"} ${num(val)}  ${pnl >= 0 ? "+" : ""}${inr(pnl)}`, k === "stop" ? dn : up, "#10131a", true);
+      }
+    }
     x.restore();
 
     // last price line and tag
@@ -436,6 +451,15 @@ export default function ChartPanel(p: Props) {
         }
         draft.current = mk(u.tool, pt); drag.current = { kind: "create", x0: x, y0: y }; redraw(); return;
       }
+      const pos = props.current.position;
+      if (pos && props.current.onLevels) {
+        for (const k of ["stop", "target"] as Level[]) {
+          const val = k === "stop" ? pos.stop : pos.target;
+          if (val != null && Math.abs(g.sy(val) - y) <= 7) {
+            levelDrag.current = { which: k, price: val }; drag.current = { kind: "level", which: k, moved: false }; setPop(null); setLvlPop(null); redraw(); return;
+          }
+        }
+      }
       // cursor: pick a drawing first, else pan
       for (let i = dr.current.length - 1; i >= 0; i--) {
         const d = dr.current[i], h = hit(g, d, x, y);
@@ -457,7 +481,9 @@ export default function ChartPanel(p: Props) {
         mouse.current = { x, y };
         const z = zone(g, x, y);
         let cur = z === "price" ? "ns-resize" : z === "time" ? "ew-resize" : ui.current.tool === "cursor" ? "crosshair" : "copy";
-        if (z === "plot" && ui.current.tool === "cursor") for (let i = dr.current.length - 1; i >= 0; i--) { const h = hit(g, dr.current[i], x, y); if (h) { cur = h.part === "h" ? "pointer" : "move"; break; } }
+        const pos0 = props.current.position;
+        if (z === "plot" && ui.current.tool === "cursor" && pos0 && props.current.onLevels && ([pos0.stop, pos0.target] as (number | null)[]).some((val) => val != null && Math.abs(g.sy(val) - y) <= 7)) cur = "ns-resize";
+        else if (z === "plot" && ui.current.tool === "cursor") for (let i = dr.current.length - 1; i >= 0; i--) { const h = hit(g, dr.current[i], x, y); if (h) { cur = h.part === "h" ? "pointer" : "move"; break; } }
         c!.style.cursor = props.current.disabled && cur === "crosshair" ? "crosshair" : cur;
         if (draft.current && ui.current.tool !== "cursor") draft.current.pts[1] = ptAt(g, x, y);
         redraw(); return;
@@ -482,6 +508,7 @@ export default function ChartPanel(p: Props) {
         v.mn = mid - half; v.mx = mid + half; redraw(); return;
       }
       if (d.kind === "time") { v.bw = Math.max(MIN_BW, Math.min(MAX_BW, d.bw0 * Math.exp((x - d.x0) * 0.006))); v.off = d.i0 - (g.n - 1) - 0.5 + (g.R - d.x0) / v.bw; clampOff(g); redraw(); return; }
+      if (d.kind === "level") { if (levelDrag.current) { levelDrag.current.price = Number(snap(g.vy(Math.min(Math.max(y, g.T), g.B))).toFixed(2)); d.moved = true; } redraw(); return; }
       if (d.kind === "create" && draft.current) { draft.current.pts[1] = ptAt(g, x, y); redraw(); return; }
       if (d.kind === "handle") { const dd = dr.current.find((q) => q.id === d.id); if (dd) { dd.pts[d.idx] = ptAt(g, x, y); redraw(); } return; }
       if (d.kind === "body") {
@@ -504,6 +531,12 @@ export default function ChartPanel(p: Props) {
         if (Math.hypot(x - d.x0, y - d.y0) > 8) { const dd = draft.current; draft.current = null; commit([...dr.current, dd]); setSel(dd.id); setTool("cursor"); }
         return; // a plain click keeps the draft: the next click finishes it
       }
+      if (d.kind === "level") {
+        const ld = levelDrag.current;
+        if (d.moved && ld) setLvlPop({ which: ld.which, price: ld.price.toFixed(2), x: Math.min(Math.max(8, x - 120), g.w - 250), y: Math.min(Math.max(8, y - 150), g.h - 190), edit: false });
+        else { levelDrag.current = null; redraw(); }
+        return;
+      }
       if (d.kind === "handle" || d.kind === "body") { commit([...dr.current]); return; }
       if (d.kind === "pan" && !d.moved && zone(g, x, y) === "plot" && ui.current.tool === "cursor" && !props.current.disabled) {
         const price = Number(snap(g.vy(y)).toFixed(2));
@@ -525,6 +558,16 @@ export default function ChartPanel(p: Props) {
     function dbl(e: MouseEvent) {
       const g = geom(); if (!g) return;
       const { x, y } = rel(e), z = zone(g, x, y);
+      const pos = props.current.position;
+      if (z === "plot" && pos && props.current.onLevels) {
+        for (const k of ["stop", "target"] as Level[]) {
+          const val = k === "stop" ? pos.stop : pos.target;
+          if (val != null && Math.abs(g.sy(val) - y) <= 7) {
+            levelDrag.current = { which: k, price: val };
+            setLvlPop({ which: k, price: val.toFixed(2), x: Math.min(Math.max(8, x - 120), g.w - 250), y: Math.min(Math.max(8, y - 150), g.h - 190), edit: true }); redraw(); return;
+          }
+        }
+      }
       if (z === "price") view.current.manual = false;
       else if (z === "time") { view.current.bw = DEFAULT_BW; view.current.off = DEFAULT_OFF; }
       redraw();
@@ -556,6 +599,29 @@ export default function ChartPanel(p: Props) {
     if (!(q > 0)) return;
     setBusy(true);
     const ok = await p.onOrder(side, pop.price, q);
+    setBusy(false);
+    if (ok) setPop(null);
+  }
+
+  async function confirmLevel() {
+    if (!lvlPop || !p.onLevels || busy) return;
+    const price = Number(lvlPop.price);
+    if (!(price > 0)) return;
+    setBusy(true);
+    await p.onLevels(lvlPop.which, price);
+    setBusy(false); levelDrag.current = null; setLvlPop(null); redraw();
+  }
+  async function removeLevel() {
+    if (!lvlPop || !p.onLevels || busy) return;
+    setBusy(true);
+    await p.onLevels(lvlPop.which, null);
+    setBusy(false); levelDrag.current = null; setLvlPop(null); redraw();
+  }
+  function cancelLevel() { levelDrag.current = null; setLvlPop(null); redraw(); }
+  async function setLevelHere(which: Level) {
+    if (!pop || !p.onLevels || busy) return;
+    setBusy(true);
+    const ok = await p.onLevels(which, pop.price);
     setBusy(false);
     if (ok) setPop(null);
   }
@@ -626,6 +692,21 @@ export default function ChartPanel(p: Props) {
               <input name="t" autoFocus maxLength={60} placeholder="Type a note, press Enter" onKeyDown={(e) => { if (e.key === "Escape") setTextEdit(null); }} onBlur={(e) => { if (e.currentTarget.value.trim()) saveText(e.currentTarget.value); else setTextEdit(null); }} />
             </form>
           )}
+          {lvlPop && p.position && (
+            <div className="tr-pop tr-lvl" style={{ left: lvlPop.x, top: lvlPop.y }} role="dialog" aria-label={lvlPop.which === "stop" ? "Move stop loss" : "Move target"}>
+              <div className="tr-ln"><b>{lvlPop.which === "stop" ? "Move stop loss" : "Move target"}</b><button className="tr-btn sm" onClick={cancelLevel} aria-label="Close">×</button></div>
+              <label className="tr-f">Price<input type="number" step={0.05} value={lvlPop.price} autoFocus onChange={(e) => { setLvlPop({ ...lvlPop, price: e.target.value }); const v = Number(e.target.value); if (v > 0 && levelDrag.current) { levelDrag.current.price = v; redraw(); } }} /></label>
+              <div className="tr-ln">
+                <span className="tr-muted">{lvlPop.which === "stop" ? "If hit" : "If hit"}</span>
+                {(() => { const v = (Number(lvlPop.price) - p.position.entry) * p.position.qty * (p.position.side === "Buy" ? 1 : -1); return <b className={"tr-mono " + (v >= 0 ? "tr-up" : "tr-down")}>{v >= 0 ? "+" : ""}{inr(v)}</b>; })()}
+              </div>
+              <div className="two">
+                <button className="tr-btn primary" disabled={busy} onClick={confirmLevel}>{busy ? "Saving…" : "Confirm"}</button>
+                <button className="tr-btn" disabled={busy} onClick={cancelLevel}>Cancel</button>
+              </div>
+              {lvlPop.edit && <button className="tr-btn sm" disabled={busy} onClick={removeLevel}>{lvlPop.which === "stop" ? "Remove stop loss" : "Remove target"}</button>}
+            </div>
+          )}
           {pop && (
             <div className="tr-pop" style={{ left: pop.x, top: pop.y }} role="dialog" aria-label="Chart order">
               <div className="tr-ln"><b>{p.title}</b><button className="tr-btn sm" onClick={() => setPop(null)} aria-label="Close">×</button></div>
@@ -635,6 +716,12 @@ export default function ChartPanel(p: Props) {
                 <button className="tr-btn buy" disabled={busy} onClick={() => submit("Buy")}>Buy</button>
                 <button className="tr-btn sell" disabled={busy} onClick={() => submit("Sell")}>Sell</button>
               </div>
+              {p.position && p.onLevels && (
+                <div className="two">
+                  <button className="tr-btn sm" disabled={busy} onClick={() => setLevelHere("stop")}>Set stop loss here</button>
+                  <button className="tr-btn sm" disabled={busy} onClick={() => setLevelHere("target")}>Set target here</button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -644,7 +731,9 @@ export default function ChartPanel(p: Props) {
           ? p.disabledText
           : tool !== "cursor"
             ? "Click on the chart to draw. Press Esc to stop."
-            : "Drag to move, scroll to zoom. Drag or scroll on the price side to stretch prices; double-click it to fit. Click a price to trade."}
+            : p.position && p.onLevels
+              ? "Drag the SL or Target line to move it, then confirm. Double-click a line to type an exact price. Click a price to trade."
+              : "Drag to move, scroll to zoom. Drag or scroll on the price side to stretch prices; double-click it to fit. Click a price to trade."}
       </p>
     </div>
   );

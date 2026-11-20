@@ -334,3 +334,13 @@
 .tr-es-steps { list-style: none; margin: 18px 0 0; padding: 14px; width: min(340px, 100%); display: grid; gap: 12px; text-align: left; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
 .tr-es-steps li { display: flex; gap: 12px; align-items: center; color: var(--fg); font-size: .86rem; }
 .tr-es-steps i { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 .74rem var(--f-body); font-style: normal; background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.tr-superbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: .8rem; }
+.tr-segs.mini { width: auto; } .tr-segs.mini button { padding: 4px 12px; font-size: .78rem; }
+.tr-lvl { border: 1px dashed transparent; background: none; color: inherit; font: inherit; padding: 3px 8px; border-radius: 7px; cursor: pointer; }
+.tr-lvl:hover:not(:disabled) { border-color: var(--line2); background: var(--surface2); }
+.tr-lvl .add { color: var(--muted); font-size: .78rem; }
+.tr-lvl:disabled { cursor: default; }
+.tr-lvlin { width: 92px !important; padding: 4px 7px !important; font-size: .82rem !important; }
+.dk-lv { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 2px 2px; color: var(--muted); font-size: .8rem; }
+.dk-lv > span { display: inline-flex; align-items: center; gap: 2px; }
+.tr-lvl.tr-down .tr-mono { color: var(--down); } .tr-lvl.tr-up .tr-mono { color: var(--up); }

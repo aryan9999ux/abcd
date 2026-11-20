@@ -32,6 +32,7 @@ import { useMedia } from "./useMedia";
 import type { AccountRow, Candle, PlanRow } from "./types";
 import { useContracts } from "./useContracts";
 import { EmptyState } from "./EmptyState";
+import { LevelCell } from "./LevelCell";
 import { Arrow } from "./Arrow";
 import { useQuotes } from "./useQuotes";
 import { useToast } from "./useToast";
@@ -77,7 +78,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   function toggleDock() { const n = dockH > 60 ? 44 : 260; setDockH(n); try { localStorage.setItem("edge-dockh", String(n)); } catch {} }
   const [q, setQ] = useState("");
   const found = useContractSearch(q);
-  const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "" });
+  const [ticket, setTicket] = useState<TicketState>({ side: "Buy", type: "Market", qty: "1", price: "", stopLoss: "", super: false, target: "" });
   const [tf, setTf] = useState(1);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
@@ -183,7 +184,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   function pick(ref: InstrumentRef, side?: Side) {
     setSel(ref);
     setIdxView(false);
-    setTicket((t) => ({ ...t, price: "", stopLoss: "", ...(side ? { side } : {}) }));
+    setTicket((t) => ({ ...t, price: "", stopLoss: "", target: "", ...(side ? { side } : {}) }));
     setMsg(null);
   }
 
@@ -192,7 +193,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     if (isIndexFO(u)) setIdxView(true);
   }
 
-  async function sendOrder(side: Side, units: number, orderType: "Market" | "Limit" | "Stop", price?: number): Promise<boolean> {
+  async function sendOrder(side: Side, units: number, orderType: "Market" | "Limit" | "Stop", price?: number, target?: number): Promise<boolean> {
     if (!accountId) return false;
     setBusy(true);
     const res = await postJSON<{ orderId: string; status: "filled" | "pending"; fillPrice?: number; stopLossWarning?: boolean }>("/api/orders", {
@@ -206,6 +207,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
       qty: units,
       ...(orderType !== "Market" && price != null ? { price } : {}),
       ...(Number(ticket.stopLoss) > 0 ? { stopLoss: Number(ticket.stopLoss) } : {}),
+      ...(target != null && target > 0 ? { target } : {}),
       ...(orderType === "Market" && ltp != null ? { seenPrice: ltp } : {}),
     });
     setBusy(false);
@@ -224,10 +226,24 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     return false;
   }
 
+  /** Move or clear the stop loss / target of an open position (chart drag or positions list). */
+  async function changeLevel(instrument: string, which: "stop" | "target", price: number | null): Promise<boolean> {
+    if (!accountId) return false;
+    const res = await postJSON<{ ok: boolean }>("/api/positions/levels", { accountId, instrument, ...(which === "stop" ? { stopLoss: price } : { target: price }) });
+    if (res.ok) {
+      const label = which === "stop" ? "Stop loss" : "Target";
+      toast.show(price == null ? `${label} removed` : `${label} set to ${num(price)}`);
+      data.refetch();
+      return true;
+    }
+    toast.show(res.error, true);
+    return false;
+  }
+
   function submitTicket() {
     const units = ticketUnits(sel, ticket.qty, lot ?? 1);
     const price = Number(ticket.price);
-    void sendOrder(ticket.side, units, ticket.type, ticket.type === "Market" ? undefined : price).then((ok) => { if (ok) setSheet(false); });
+    void sendOrder(ticket.side, units, ticket.type, ticket.type === "Market" ? undefined : price, ticket.super ? Number(ticket.target) : undefined).then((ok) => { if (ok) setSheet(false); });
   }
 
   async function chartOrder(side: Side, price: number, qty: number) {
@@ -432,7 +448,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                     title={chartTitle}
                     candles={candles}
                     last={cLtp}
-                    position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                    position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1), qty: curPos.qty, stop: curPos.stop_loss ?? null, target: curPos.take_profit ?? null } : null}
+                onLevels={!idx && curPos ? (w, price) => changeLevel(key, w, price) : undefined}
                     pending={(idx ? [] : pending).filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
                     tf={tf}
                     onTf={setTf}
@@ -504,6 +521,10 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                     <b className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</b>
                   </button>
                   <button className="tr-btn sm" disabled={!active} onClick={() => closePosition(p.instrument)}>Exit</button>
+                  <div className="dk-lv">
+                    <span>SL <LevelCell kind="stop" value={p.stop_loss} disabled={!active} onSave={(v) => changeLevel(p.instrument, "stop", v)} /></span>
+                    <span>Target <LevelCell kind="target" value={p.take_profit} disabled={!active} onSave={(v) => changeLevel(p.instrument, "target", v)} /></span>
+                  </div>
                 </div>
               ); })}
             </div>
@@ -648,7 +669,8 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 title={chartTitle}
                 candles={candles}
                 last={cLtp}
-                position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1), qty: curPos.qty, stop: curPos.stop_loss ?? null, target: curPos.take_profit ?? null } : null}
+                onLevels={!idx && curPos ? (w, price) => changeLevel(key, w, price) : undefined}
                 pending={(idx ? [] : pending).filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
                 tf={tf}
                 onTf={setTf}
@@ -699,13 +721,15 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           </div>
           <div className="dx-dbody">
             {dock === "pos" && (
-              <table><thead><tr><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Avg price</th><th>LTP</th><th>P&amp;L</th><th /></tr></thead><tbody>
-                {data.loading && <tr><td colSpan={7} className="dx-empty">Loading positions…</td></tr>}
-                {!data.loading && !accPositions.length && <tr><td colSpan={7} className="dx-empty">No open positions. Pick a symbol on the left, or click the chart, to place a trade.</td></tr>}
+              <table><thead><tr><th className="l">Instrument</th><th>Side</th><th>Qty</th><th>Avg price</th><th>LTP</th><th>Stop loss</th><th>Target</th><th>P&amp;L</th><th /></tr></thead><tbody>
+                {data.loading && <tr><td colSpan={9} className="dx-empty">Loading positions…</td></tr>}
+                {!data.loading && !accPositions.length && <tr><td colSpan={9} className="dx-empty">No open positions. Pick a symbol on the left, or click the chart, to place a trade.</td></tr>}
                 {accPositions.map((p) => { const pl = positionPnl(p, spots), px = livePrice(p.instrument, spots); return (
                   <tr key={p.id}><td className="l"><button className="dx-lnk" onClick={() => pick(parseInstrumentKey(p.instrument))}>{nameOfKey(p.instrument)}</button></td>
                     <td><span className={"dx-side " + (p.side === "Buy" ? "b" : "s")}>{p.side}</span></td><td className="tr-mono">{p.qty}</td><td className="tr-mono">{num(p.avg_price)}</td>
                     <td className="tr-mono"><Px v={px ?? undefined} text={px == null ? "—" : num(px)} /></td>
+                    <td><LevelCell kind="stop" value={p.stop_loss} disabled={!active} onSave={(v) => changeLevel(p.instrument, "stop", v)} /></td>
+                    <td><LevelCell kind="target" value={p.take_profit} disabled={!active} onSave={(v) => changeLevel(p.instrument, "target", v)} /></td>
                     <td className={"tr-mono " + (pl == null ? "" : pl >= 0 ? "tr-up" : "tr-down")}>{pl == null ? "—" : inr(pl)}</td>
                     <td><button className="dx-btn sm" disabled={!active} onClick={() => closePosition(p.instrument)}>Exit</button></td></tr>
                 ); })}

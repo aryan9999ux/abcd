@@ -127,3 +127,4 @@
   .dk-chainwrap .tr-chainhead { display: grid; grid-template-columns: 1fr auto auto; gap: 10px 14px; padding: 10px 12px; }
   .dk-chainwrap .tr-chainhead label { width: auto; }
 }
+.dk-pos { flex-wrap: wrap; } .dk-pos .dk-lv { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; }

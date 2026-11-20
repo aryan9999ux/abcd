@@ -35,6 +35,7 @@ export interface PlaceOrderRequest extends InstrumentRef {
   price?: number;
   /** Optional. Trading without one gives a warning the first time and closes the account the second time. */
   stopLoss?: number;
+  target?: number;
   /** Price on the trader's screen. A market order is refused if the live price has moved away from it by more than a small tolerance. */
   seenPrice?: number;
 }

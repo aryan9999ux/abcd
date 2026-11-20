@@ -16,10 +16,20 @@ export function HeroArt() {
         <path className="pt-art-area" d="M0 220 C50 210 70 190 110 196 S170 150 210 158 S270 100 310 108 S370 50 420 36 V260 H0Z" fill="url(#haA)" />
         <path className="pt-art-line" d="M0 220 C50 210 70 190 110 196 S170 150 210 158 S270 100 310 108 S370 50 420 36" stroke="url(#haL)" strokeWidth="3.5" strokeLinecap="round" pathLength="1" />
         <circle className="pt-art-dot" cx="420" cy="36" r="6" fill="#34d399" />
+        <g className="pt-art-note n1">
+          <line x1="110" y1="190" x2="110" y2="150" stroke="currentColor" strokeOpacity=".35" />
+          <circle cx="110" cy="196" r="4.5" className="pt-art-ring" />
+          <text x="116" y="136" className="nv">₹10L</text><text x="116" y="152" className="nl">funded capital</text>
+        </g>
+        <g className="pt-art-note n2">
+          <line x1="262" y1="124" x2="262" y2="76" stroke="currentColor" strokeOpacity=".35" />
+          <circle cx="262" cy="130" r="4.5" className="pt-art-ring" />
+          <text x="256" y="62" textAnchor="end" className="nv">Every 14 days</text><text x="256" y="78" textAnchor="end" className="nl">request a payout</text>
+        </g>
+        <g className="pt-art-note n3">
+          <text x="404" y="14" textAnchor="end" className="nv">80% yours</text><text x="404" y="30" textAnchor="end" className="nl">of every profit</text>
+        </g>
       </svg>
-      <div className="pt-art-chip c1"><b>80%</b><span>profit split</span></div>
-      <div className="pt-art-chip c2"><b>₹10L</b><span>capital to trade</span></div>
-      <div className="pt-art-chip c3"><b>14 days</b><span>payout cycle</span></div>
     </div>
   );
 }

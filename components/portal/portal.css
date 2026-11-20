@@ -203,7 +203,7 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pt-art-area { opacity: 0; animation: art-fill 5s ease-in-out infinite; }
 .pt-art-dot { opacity: 0; transform-origin: 420px 36px; animation: art-dot 5s ease-in-out infinite; }
 .pt-art-bar { transform-box: fill-box; transform-origin: bottom; animation: art-bar 3.6s ease-in-out infinite; }
-.pt-art-chip { position: absolute; display: grid; gap: 1px; padding: 9px 14px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 78%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, .25); animation: art-float 6s ease-in-out infinite; }
+.pt-art-chip-unused { position: absolute; display: grid; gap: 1px; padding: 9px 14px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 78%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, .25); animation: art-float 6s ease-in-out infinite; }
 .pt-art-chip b { font: 700 1.05rem var(--f-display); letter-spacing: 0; } .pt-art-chip span { font-size: .72rem; color: var(--muted); }
 .pt-art-chip.c1 { left: 2%; top: 6%; } .pt-art-chip.c2 { right: 0; top: 34%; animation-delay: -2s; } .pt-art-chip.c3 { left: 14%; bottom: 2%; animation-delay: -4s; }
 @keyframes art-draw { 0% { stroke-dashoffset: 1; } 55%, 100% { stroke-dashoffset: 0; } }
@@ -215,3 +215,12 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 @media (max-width: 900px) { .pt-hero { grid-template-columns: 1fr; } .pt-art { min-height: 180px; max-width: 420px; } }
 @media (prefers-reduced-motion: reduce) { .pt-art * { animation: none !important; } .pt-art-line { stroke-dashoffset: 0; } .pt-art-area, .pt-art-dot { opacity: 1; } }
 .pt-art-svg { overflow: visible; }
+
+/* Plain on-chart notes instead of floating cards */
+.pt-art-ring { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.pt-art-note { opacity: 0; } .pt-art-note .nv { font: 650 13px var(--f-body); fill: var(--fg); } .pt-art-note .nl { font: 400 11px var(--f-body); fill: var(--muted); }
+.pt-art-note.n1 { animation: note-a 5s ease-in-out infinite; } .pt-art-note.n2 { animation: note-b 5s ease-in-out infinite; } .pt-art-note.n3 { animation: note-c 5s ease-in-out infinite; }
+@keyframes note-a { 0%, 12% { opacity: 0; } 22%, 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes note-b { 0%, 34% { opacity: 0; } 46%, 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes note-c { 0%, 54% { opacity: 0; } 66%, 94% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pt-art-note { opacity: 1 !important; } }

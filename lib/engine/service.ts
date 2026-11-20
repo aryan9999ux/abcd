@@ -50,7 +50,7 @@ interface AccountRow {
   cycle_no: number; cycle_start_date: string | null; payouts_count: number; purchase_id: string | null;
   is_demo: boolean; demo_expires_at: string | null; no_sl_warnings: number;
 }
-interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number; stop_loss: number | null; opened_at: string }
+interface PosRow { id: string; instrument: string; segment: string; side: Side; qty: number; avg_price: number; stop_loss: number | null; take_profit: number | null; opened_at: string }
 interface Ctx { sb: Sb; acct: AccountRow; positions: PosRow[]; now: number }
 
 const num = (v: unknown) => Number(v);
@@ -70,7 +70,7 @@ function toAccount(r: Record<string, unknown>): AccountRow {
 
 function toPositions(rows: unknown): PosRow[] {
   return ((rows as Record<string, unknown>[] | null) ?? []).map((p) => ({
-    ...p, qty: num(p.qty), avg_price: num(p.avg_price), stop_loss: p.stop_loss == null ? null : num(p.stop_loss),
+    ...p, qty: num(p.qty), avg_price: num(p.avg_price), stop_loss: p.stop_loss == null ? null : num(p.stop_loss), take_profit: p.take_profit == null ? null : num(p.take_profit),
   })) as unknown as PosRow[];
 }
 
@@ -79,7 +79,7 @@ async function loadCtx(sb: Sb, accountId: string, userId?: string): Promise<Ctx>
   if (userId) q = q.eq("user_id", userId);
   const [acc, pos] = await Promise.all([
     q.maybeSingle(),
-    sb.from("positions").select("id,instrument,segment,side,qty,avg_price,stop_loss,opened_at").eq("account_id", accountId),
+    sb.from("positions").select("id,instrument,segment,side,qty,avg_price,stop_loss,take_profit,opened_at").eq("account_id", accountId),
   ]);
   const row = must(acc, "load account");
   if (!row) throw new HttpError(404, "Account not found.");
@@ -141,21 +141,21 @@ function book(ctx: Ctx) {
 
 async function insertOrder(ctx: Ctx, o: {
   ref: InstrumentRef; side: Side; type: OrderType; qty: number; price: number | null;
-  status: "pending" | "filled" | "rejected"; reason?: string; stopLoss?: number | null; risk?: number | null;
+  status: "pending" | "filled" | "rejected"; reason?: string; stopLoss?: number | null; risk?: number | null; target?: number | null;
 }): Promise<string> {
   const row = must(await ctx.sb.from("orders").insert({
     user_id: ctx.acct.user_id, account_id: ctx.acct.id, instrument: instrumentKey(o.ref), segment: o.ref.segment,
     underlying: o.ref.underlying, strike: o.ref.strike ?? null, expiry: o.ref.expiry ?? null, side: o.side,
     order_type: o.type, qty: o.qty, price: o.price, status: o.status, reject_reason: o.reason ?? null,
     filled_at: o.status === "filled" ? new Date(ctx.now).toISOString() : null,
-    stop_loss: o.stopLoss ?? null, risk_inr: o.risk ?? null,
+    stop_loss: o.stopLoss ?? null, risk_inr: o.risk ?? null, take_profit: o.target ?? null,
   }).select("id").single(), "insert order");
   return row.id as string;
 }
 
 /** Apply one fill: order, trade, position (net/average/flip), balance and day result, atomically in ONE database call. */
 async function recordFill(ctx: Ctx, f: {
-  ref: InstrumentRef; side: Side; qty: number; price: number; type: OrderType; orderId?: string; stopLoss?: number | null; risk?: number | null;
+  ref: InstrumentRef; side: Side; qty: number; price: number; type: OrderType; orderId?: string; stopLoss?: number | null; risk?: number | null; target?: number | null;
 }): Promise<string> {
   const key = instrumentKey(f.ref);
   const existing = ctx.positions.find((p) => p.instrument === key);
@@ -174,22 +174,26 @@ async function recordFill(ctx: Ctx, f: {
   let posAction: "insert" | "update" | "delete" | "none" = "none";
   let posId: string | null = existing?.id ?? null;
   let stop: number | null = null;
-  if (existing && next) { posAction = "update"; stop = f.stopLoss != null && next.side === f.side ? f.stopLoss : existing.stop_loss; }
-  else if (existing) posAction = "delete";
-  else if (next) { posAction = "insert"; posId = randomUUID(); stop = f.stopLoss ?? null; }
+  let tp: number | null = null;
+  if (existing && next) {
+    posAction = "update";
+    stop = f.stopLoss != null && next.side === f.side ? f.stopLoss : existing.stop_loss;
+    tp = f.target != null && next.side === f.side ? f.target : existing.take_profit;
+  } else if (existing) posAction = "delete";
+  else if (next) { posAction = "insert"; posId = randomUUID(); stop = f.stopLoss ?? null; tp = f.target ?? null; }
 
   const { error } = await ctx.sb.rpc("apply_fill", { p: {
     account_id: ctx.acct.id, user_id: ctx.acct.user_id, order_id: orderId, order_exists: !!f.orderId,
     instrument: key, segment: f.ref.segment, underlying: f.ref.underlying, strike: f.ref.strike ?? null, expiry: f.ref.expiry ?? null,
-    side: f.side, order_type: f.type, qty: f.qty, price: f.price, stop_loss: f.stopLoss ?? null, risk: f.risk ?? null, filled_at: filledAt,
-    pos_action: posAction, pos_id: posId, pos_side: next?.side ?? null, pos_qty: next?.qty ?? null, pos_avg: next?.avg ?? null, pos_stop: stop,
+    side: f.side, order_type: f.type, qty: f.qty, price: f.price, stop_loss: f.stopLoss ?? null, risk: f.risk ?? null, take_profit: f.target ?? null, filled_at: filledAt,
+    pos_action: posAction, pos_id: posId, pos_side: next?.side ?? null, pos_qty: next?.qty ?? null, pos_avg: next?.avg ?? null, pos_stop: stop, pos_target: tp,
     realized, balance: patch.balance, trading_days: patch.trading_days, last_date: today, cycle_start: patch.cycle_start_date, cycle_no: ctx.acct.cycle_no, day: today,
   } });
   if (error) throw new Error(`apply fill: ${error.message}`);
 
-  if (posAction === "update" && existing && next) Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop });
+  if (posAction === "update" && existing && next) Object.assign(existing, { side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop, take_profit: tp });
   else if (posAction === "delete" && existing) ctx.positions = ctx.positions.filter((p) => p !== existing);
-  else if (posAction === "insert" && next) ctx.positions.push({ id: posId as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop, opened_at: filledAt });
+  else if (posAction === "insert" && next) ctx.positions.push({ id: posId as string, instrument: key, segment: f.ref.segment, side: next.side, qty: next.qty, avg_price: next.avg, stop_loss: stop, take_profit: tp, opened_at: filledAt });
   Object.assign(ctx.acct, patch);
   return orderId;
 }
@@ -408,6 +412,16 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
       throw new HttpError(409, `The price moved from ${req.seenPrice.toFixed(2)} to ${ltp.toFixed(2)}. Your order was not placed. Check the new price and try again.`);
     }
 
+    // Super order: entry with a stop loss and a target. Both must sit on the right side of the entry price.
+    const refPx = action === "fill" ? ltp : (limit as number);
+    const target = req.target ?? null;
+    if (target != null) {
+      if (req.stopLoss == null) throw new HttpError(400, "A Super order needs both a stop loss and a target.");
+      if (req.side === "Buy" ? !(req.stopLoss < refPx && target > refPx) : !(req.stopLoss > refPx && target < refPx)) {
+        throw new HttpError(400, req.side === "Buy" ? "For a buy, the stop loss must be below the price and the target above it." : "For a sell, the stop loss must be above the price and the target below it.");
+      }
+    }
+
     const key = instrumentKey(ref);
     const ex = ctx.positions.find((p) => p.instrument === key);
     if (pre.underReview) throw new HttpError(403, "Your payout request is under review. Trading is paused until it is decided.");
@@ -444,14 +458,14 @@ export async function placeOrder(userId: string, req: PlaceOrderRequest) {
     if (action === "pending") {
       if (pre.pendingCount >= MAX_PENDING_ORDERS) throw new HttpError(429, `You can have at most ${MAX_PENDING_ORDERS} pending orders.`);
       const [orderId] = await Promise.all([
-        insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending", stopLoss: stop, risk }),
+        insertOrder(ctx, { ref, side: req.side, type: req.orderType, qty: req.qty, price: limit as number, status: "pending", stopLoss: stop, risk, target }),
         markWarned,
       ]);
       return { orderId, status: "pending" as const, ...warn };
     }
 
     const [orderId] = await Promise.all([
-      recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType, stopLoss: stop, risk }),
+      recordFill(ctx, { ref, side: req.side, qty: req.qty, price: ltp, type: req.orderType, stopLoss: stop, risk, target }),
       markWarned,
     ]);
     // Loss limits are checked on the live book right now; the rest of the bookkeeping happens after the reply.
@@ -488,6 +502,36 @@ export async function closePosition(userId: string, req: { accountId: string; in
     await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: px, type: "Market" });
     await afterChange(ctx);
     return { fillPrice: px };
+  });
+}
+
+/** Move or clear the stop loss and target of an open position (from the chart or the positions list). */
+export async function setLevels(userId: string, req: { accountId: string; instrument: string; stopLoss?: number | null; target?: number | null }) {
+  return withLock(req.accountId, async () => {
+    const ctx = await loadCtx(admin(), req.accountId, userId);
+    requireActive(ctx);
+    const p = ctx.positions.find((x) => x.instrument === req.instrument);
+    if (!p) throw new HttpError(404, "You have no open position in that instrument.");
+    const ref = parseInstrumentKey(p.instrument);
+    await ensurePrice(ref);
+    const ltp = markFor(ref);
+    const buy = p.side === "Buy";
+    const patch: { stop_loss?: number | null; take_profit?: number | null } = {};
+    if (req.stopLoss !== undefined) {
+      if (req.stopLoss != null && (buy ? req.stopLoss >= ltp : req.stopLoss <= ltp)) {
+        throw new HttpError(422, buy ? `The stop loss must be below the current price (${ltp.toFixed(2)}).` : `The stop loss must be above the current price (${ltp.toFixed(2)}).`);
+      }
+      patch.stop_loss = req.stopLoss;
+    }
+    if (req.target !== undefined) {
+      if (req.target != null && (buy ? req.target <= ltp : req.target >= ltp)) {
+        throw new HttpError(422, buy ? `The target must be above the current price (${ltp.toFixed(2)}).` : `The target must be below the current price (${ltp.toFixed(2)}).`);
+      }
+      patch.take_profit = req.target;
+    }
+    if (Object.keys(patch).length === 0) throw new HttpError(400, "Nothing to change.");
+    must(await ctx.sb.from("positions").update(patch).eq("id", p.id), "update levels");
+    return { ok: true };
   });
 }
 
@@ -634,15 +678,16 @@ async function processAccount(sb: Sb, accountId: string) {
   }
   await rollDay(ctx);
 
-  // Stop losses close the position on the live price, with no waiting period.
+  // Stop losses and targets close the position on the live price, with no waiting period.
   for (const p of [...ctx.positions]) {
-    if (p.stop_loss == null) continue;
+    if (p.stop_loss == null && p.take_profit == null) continue;
     const ref = parseInstrumentKey(p.instrument);
     const ltp = getPrice(ref);
     if (ltp == null) continue;
-    const hit = p.side === "Buy" ? ltp <= p.stop_loss : ltp >= p.stop_loss;
-    if (!hit) continue;
-    await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: ltp, type: "Stop" });
+    const slHit = p.stop_loss != null && (p.side === "Buy" ? ltp <= p.stop_loss : ltp >= p.stop_loss);
+    const tpHit = p.take_profit != null && (p.side === "Buy" ? ltp >= p.take_profit : ltp <= p.take_profit);
+    if (!slHit && !tpHit) continue;
+    await recordFill(ctx, { ref, side: opposite(p.side), qty: p.qty, price: ltp, type: slHit ? "Stop" : "Limit" });
     if (await enforceRisk(ctx)) return;
   }
 
@@ -684,6 +729,7 @@ async function processAccount(sb: Sb, accountId: string) {
     await recordFill(ctx, {
       ref, side: o.side, qty: num(o.qty), price: ltp, type: o.order_type, orderId: o.id,
       stopLoss: o.stop_loss == null ? null : num(o.stop_loss), risk: o.risk_inr == null ? null : num(o.risk_inr),
+      target: o.take_profit == null ? null : num(o.take_profit),
     });
     if (await enforceRisk(ctx)) return;
   }
