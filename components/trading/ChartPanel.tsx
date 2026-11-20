@@ -262,7 +262,7 @@ export default function ChartPanel(p: Props) {
       x.strokeStyle = d.color; x.fillStyle = d.color; x.lineWidth = isSel ? 2.2 : 1.6; x.setLineDash([]);
       if (d.type === "hline") {
         x.beginPath(); x.moveTo(0, P[0].y); x.lineTo(R, P[0].y); x.stroke();
-        x.fillStyle = d.color; x.fillRect(R + 1, P[0].y - 9, AXIS_W - 2, 18); x.fillStyle = "#0b0716"; x.fillText(fmtP(d.pts[0].p, step), R + 5, P[0].y);
+        x.fillStyle = d.color; x.fillRect(R + 1, P[0].y - 9, AXIS_W - 2, 18); x.fillStyle = "#0b0716"; x.fillText(num(d.pts[0].p), R + 5, P[0].y);
       } else if (d.type === "text") {
         x.font = `600 12px ${st.getPropertyValue("--f-body") || "sans-serif"}`; x.fillStyle = d.color; x.fillText(d.text ?? "", P[0].x + 6, P[0].y); x.font = `11px ${mono}`;
         x.beginPath(); x.arc(P[0].x, P[0].y, 3, 0, 6.3); x.fill();
@@ -280,7 +280,7 @@ export default function ChartPanel(p: Props) {
             const price = p1 - (p1 - p0) * lv, Y = sy(price);
             x.globalAlpha = 0.07; if (k) { const prev = sy(p1 - (p1 - p0) * FIB[k - 1]); x.fillRect(xa, Math.min(Y, prev), xb - xa, Math.abs(Y - prev)); }
             x.globalAlpha = 1; x.lineWidth = 1; x.beginPath(); x.moveTo(xa, Y); x.lineTo(xb, Y); x.stroke();
-            x.fillText(`${lv} (${fmtP(price, step)})`, xa + 4, Y - 7);
+            x.fillText(`${lv} (${num(price)})`, xa + 4, Y - 7);
           });
           x.lineWidth = 1; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(P[0].x, P[0].y); x.lineTo(P[1].x, P[1].y); x.stroke(); x.setLineDash([]);
         }
@@ -313,7 +313,7 @@ export default function ChartPanel(p: Props) {
     const lastC = cs[n - 1], lp = last ?? lastC.c, ly = sy(lp), lc = lp >= lastC.o ? up : dn;
     if (ly > T && ly < B) {
       x.setLineDash([2, 3]); x.strokeStyle = lc; x.lineWidth = 1; x.beginPath(); x.moveTo(0, ly); x.lineTo(R, ly); x.stroke(); x.setLineDash([]);
-      x.fillStyle = lc; x.fillRect(R + 1, ly - 9, AXIS_W - 2, 18); x.fillStyle = "#04130c"; x.fillText(fmtP(lp, step), R + 5, ly);
+      x.fillStyle = lc; x.fillRect(R + 1, ly - 9, AXIS_W - 2, 18); x.fillStyle = "#04130c"; x.fillText(num(lp), R + 5, ly);
     }
 
     // price axis labels
@@ -358,7 +358,7 @@ export default function ChartPanel(p: Props) {
       x.fillStyle = mut; x.fillText(head, 10, T + 8);
       const parts: [string, number][] = [["O", k.o], ["H", k.h], ["L", k.l], ["C", k.c]];
       let X = 10 + (head ? x.measureText(head).width + 12 : 0);
-      for (const [lb, v] of parts) { x.fillStyle = mut; x.fillText(lb, X, T + 8); X += 12; x.fillStyle = col; const s = fmtP(v, step); x.fillText(s, X, T + 8); X += x.measureText(s).width + 10; }
+      for (const [lb, v] of parts) { x.fillStyle = mut; x.fillText(lb, X, T + 8); X += 12; x.fillStyle = col; const s = num(v); x.fillText(s, X, T + 8); X += x.measureText(s).width + 10; }
     }
 
     // crosshair
@@ -366,7 +366,7 @@ export default function ChartPanel(p: Props) {
       x.strokeStyle = mut; x.lineWidth = 1; x.setLineDash([3, 3]);
       x.beginPath(); x.moveTo(0, m.y); x.lineTo(R, m.y); x.moveTo(m.x, T); x.lineTo(m.x, B); x.stroke(); x.setLineDash([]);
       const v = vy(m.y);
-      x.fillStyle = acc; x.fillRect(R + 1, m.y - 9, AXIS_W - 2, 18); x.fillStyle = accFg; x.fillText(fmtP(v, step), R + 5, m.y);
+      x.fillStyle = acc; x.fillRect(R + 1, m.y - 9, AXIS_W - 2, 18); x.fillStyle = accFg; x.fillText(num(v), R + 5, m.y);
       const tt = tOf(ix(m.x)), label = props.current.tf >= 1440 ? dm(tt) : `${dm(tt)} ${hm(tt)}`, tw = x.measureText(label).width + 12;
       x.fillStyle = acc; x.fillRect(Math.min(Math.max(0, m.x - tw / 2), R - tw), B + 2, tw, 18);
       x.fillStyle = accFg; x.textAlign = "center"; x.fillText(label, Math.min(Math.max(tw / 2, m.x), R - tw / 2), B + 11); x.textAlign = "left";
