@@ -124,7 +124,11 @@
   .dk-chainwrap table th:nth-child(1), .dk-chainwrap table td:nth-child(1):not(.tr-chainempty), .dk-chainwrap table th:nth-child(2), .dk-chainwrap table td:nth-child(2),
   .dk-chainwrap table th:nth-child(6), .dk-chainwrap table td:nth-child(6), .dk-chainwrap table th:nth-child(7), .dk-chainwrap table td:nth-child(7) { display: none; }
   .dk-chainwrap .tr-chainempty { display: table-cell; }
+  .dk-chainwrap table { width: 100%; table-layout: fixed; }
+  .dk-chainwrap table th:nth-child(3), .dk-chainwrap table th:nth-child(4), .dk-chainwrap table th:nth-child(5),
+  .dk-chainwrap table td:nth-child(3):not(.tr-chainempty), .dk-chainwrap table td:nth-child(4), .dk-chainwrap table td:nth-child(5) { text-align: center !important; }
   .dk-chainwrap .tr-chainhead { display: grid; grid-template-columns: 1fr auto auto; gap: 10px 14px; padding: 10px 12px; }
   .dk-chainwrap .tr-chainhead label { width: auto; }
 }
 .dk-pos { flex-wrap: wrap; } .dk-pos .dk-lv { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; }
+.dk-seg { margin: 0 14px 10px; width: fit-content; }

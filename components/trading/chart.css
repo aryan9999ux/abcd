@@ -18,6 +18,6 @@
 .ch-text { position: absolute; z-index: 6; } .ch-text input { width: 220px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--accent); background: var(--surface2); color: var(--fg); font: .85rem var(--f-body); }
 @media (max-width: 760px) {
   .ch-body { flex-direction: column-reverse; }
-  .ch-tools { width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 2px 0; gap: 4px; }
+  .ch-tools { width: auto; flex-direction: row; flex-wrap: wrap; overflow: visible; justify-content: center; padding: 2px 0; gap: 4px; }
   .ch-div { width: 1px; height: 18px; margin: 0 4px; }
 }

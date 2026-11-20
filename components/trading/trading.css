@@ -354,3 +354,5 @@
 .dk-wbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 0; color: var(--muted); font-size: .78rem; } .dk-wbar button { border: 0; background: none; color: var(--hi, var(--accent)); font: 650 .84rem var(--f-body); cursor: pointer; padding: 6px 0; }
 .dk-wline { display: flex; align-items: center; } .dk-wline .dk-row { flex: 1; min-width: 0; }
 .dx-wrow .acts .st { background: var(--surface2); color: var(--fg); } .dx-wrow .acts .st.on:hover { background: var(--down); color: #fff; }
+.tr-cbody .tr-scroll.tall th:nth-child(3), .tr-cbody .tr-scroll.tall th:nth-child(4), .tr-cbody .tr-scroll.tall th:nth-child(5),
+.tr-cbody .tr-scroll.tall td:nth-child(3):not(.tr-chainempty), .tr-cbody .tr-scroll.tall td:nth-child(4), .tr-cbody .tr-scroll.tall td:nth-child(5) { text-align: center !important; }

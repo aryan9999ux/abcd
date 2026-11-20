@@ -115,7 +115,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const selChg = ltp != null && selPrev != null ? ltp - selPrev : null;
 
   // Index view: picking Nifty / Bank Nifty / Sensex shows the index chart; orders still go to the futures contract.
-  const [idxView, setIdxView] = useState(false);
+  const [idxView, setIdxView] = useState(true);
   const idx = idxView && isIndexFO(sel.underlying) && sel.segment === "FUT";
   const cKey = idx ? `${sel.underlying}|SPOT` : key;
   const cLtp = idx ? spot : ltp;
@@ -403,7 +403,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               </section>
               <div className="dk-idx">
                 {["NIFTY", "BANKNIFTY", "SENSEX"].map((k) => { const c = chg(k); return (
-                  <button key={k} onClick={() => openInst({ underlying: k, segment: "FUT", expiry: contracts.specs[k]?.futExpiries[0] }, "home")}>
+                  <button key={k} onClick={() => { openInst({ underlying: k, segment: "FUT", expiry: contracts.specs[k]?.futExpiries[0] }, "home"); setIdxView(true); }}>
                     <small>{headlineOf(k)}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
                     <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "▲" : "▼"} ${Math.abs(c.pc).toFixed(2)}%` : "—"}</span>
                   </button>
@@ -460,7 +460,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                       <div key={w.k}>
                         {!t && (i === 0 || rows[i - 1].group !== w.group) && <div className="dk-sep">{wGroup[w.group]}</div>}
                         <div className="dk-wline">
-                          <button className="dk-row" onClick={() => openInst(w.ref, "watch")}>
+                          <button className="dk-row" onClick={() => { openInst(w.ref, "watch"); if (w.group === 0) setIdxView(true); }}>
                             <span><b>{w.title}</b><small>{w.sub}</small></span>{priceCell(w.k)}
                           </button>
                           {(wEdit || t) && <button className={"tr-star" + (on ? " on" : "")} onClick={() => wlist.toggle(w.k)} aria-label={on ? "Remove from watchlist" : "Add to watchlist"}>{on ? (t ? "★" : "×") : "☆"}</button>}
@@ -480,6 +480,9 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   <div><b>{chartTitle}</b><button className={"tr-star hd" + (wlist.has(curWatchKey) ? " on" : "")} onClick={() => wlist.toggle(curWatchKey)} aria-label={wlist.has(curWatchKey) ? "Remove from watchlist" : "Add to watchlist"}>{wlist.has(curWatchKey) ? "★" : "☆"}</button>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
                   <div className="dk-q"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={cChg >= 0 ? "tr-up" : "tr-down"}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%) <Arrow up={cChg >= 0} /></small>}</div>
                 </div>
+                {isIndexFO(sel.underlying) && sel.segment === "FUT" && (
+                  <div className="dx-seg dk-seg" role="group" aria-label="Chart source"><button aria-pressed={idx} onClick={() => setIdxView(true)}>Index</button><button aria-pressed={!idx} onClick={() => setIdxView(false)}>Futures</button></div>
+                )}
                 <div className="dk-chart">
                   <ChartPanel
                     title={chartTitle}

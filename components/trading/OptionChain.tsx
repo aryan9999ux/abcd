@@ -125,7 +125,7 @@ export default function OptionChain({ underlying, spot, expiries, expiry, lot, o
           </tbody>
         </table>
       </div>
-      <p className="tr-hint">Premiums are live exchange prices (hover for bid, ask and open interest). IV and delta are calculated from those premiums. Click a premium to trade it.</p>
+      <p className="tr-hint">Premiums are live exchange prices. IV and delta are calculated from them. Tap or click a premium to trade it.</p>
     </>
   );
 }
