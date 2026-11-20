@@ -542,6 +542,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                   {o.status === "pending" && <button className="tr-btn sm" onClick={() => cancelOrder(o.id)}>Cancel</button>}
                 </div>
               ))}
+              {acctOrders.length > 0 && <a className="tr-btn" href="/reports" style={{ textAlign: "center", textDecoration: "none" }}>Full order and trade history</a>}
             </div>
           )}
 

@@ -5,12 +5,25 @@ import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { Icon } from "./ui";
+import { Bell, MarketStrip } from "./PortalBar";
 import { usePortal } from "./PortalProvider";
 import "./portal.css";
 
 const NAV: [string, string, string][] = [
   ["/dashboard", "Overview", "overview"],
   ["/accounts", "Accounts", "accounts"],
+  ["/reports", "Reports", "reports"],
+  ["/funds", "Funds", "funds"],
+  ["/strategies", "Strategies", "strategy"],
+  ["/payouts", "Payouts", "payouts"],
+  ["/payments", "Payments", "receipt"],
+  ["/verification", "Verification", "verify"],
+  ["/help", "Help", "help"],
+];
+
+const MORE: [string, string, string][] = [
+  ["/funds", "Funds", "funds"],
+  ["/strategies", "Strategies", "strategy"],
   ["/payouts", "Payouts", "payouts"],
   ["/payments", "Payments", "receipt"],
   ["/verification", "Verification", "verify"],
@@ -22,13 +35,15 @@ export default function PortalShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, kycVerified, kyc } = usePortal();
   const [menu, setMenu] = useState(false);
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
     try { const t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch { /* storage blocked */ }
   }, []);
-  useEffect(() => setMenu(false), [path]);
+  useEffect(() => { setMenu(false); setMore(false); }, [path]);
 
   const needsKyc = !kycVerified;
+  const moreOn = more || MORE.some(([h]) => path.startsWith(h));
   const active = (href: string) => path === href || (href !== "/dashboard" && path.startsWith(href));
   const initial = (user.name || "A").trim().slice(0, 1).toUpperCase();
 
@@ -72,8 +87,9 @@ export default function PortalShell({ children }: { children: ReactNode }) {
 
       <div className="pt-col">
         <header className="pt-top">
-          <Link className="pt-brand" href="/"><LogoMark size={30} id="ps" /><b><Wordmark /></b></Link>
+          <Link className="pt-brand" href="/"><LogoMark size={30} id="pt" /><b><Wordmark /></b></Link>
           <span className="pt-sp" />
+          <Bell className="bell-m" />
           <Link className="pt-helpbtn" href="/help" aria-label="Help"><Icon n="help" size={18} /></Link>
           <Link className="pt-buy" href="/checkout"><Icon n="plus" size={16} /> Buy account</Link>
           <button className="pt-av btn" onClick={() => setMenu((m) => !m)} aria-label="Account menu" aria-expanded={menu}>{initial}</button>
@@ -87,15 +103,24 @@ export default function PortalShell({ children }: { children: ReactNode }) {
             </div>
           )}
         </header>
+        <MarketStrip />
         <main className="pt-page">{children}</main>
       </div>
 
+      {more && <button className="pt-scrim" aria-label="Close menu" onClick={() => setMore(false)} />}
+      {more && (
+        <div className="pt-more" role="menu">
+          {MORE.map(([href, label, ic]) => (
+            <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}><span className="pt-mi"><Icon n={ic} size={20} /></span><b>{label}</b>{href === "/verification" && needsKyc && <i className="pt-dot" />}</Link>
+          ))}
+        </div>
+      )}
       <nav className="pt-tabs" aria-label="Portal">
         <Link href="/dashboard" aria-current={active("/dashboard") ? "page" : undefined}><Icon n="overview" /><span>Overview</span></Link>
         <Link href="/accounts" aria-current={active("/accounts") ? "page" : undefined}><Icon n="accounts" /><span>Accounts</span></Link>
         <Link className="mid" href="/terminal"><span className="pt-fab"><Icon n="terminal" size={24} /></span><span>Terminal</span></Link>
-        <Link href="/payouts" aria-current={active("/payouts") ? "page" : undefined}><Icon n="payouts" /><span>Payouts</span></Link>
-        <Link href="/verification" aria-current={active("/verification") ? "page" : undefined}><Icon n="verify" /><span>Verify</span>{needsKyc && <i className="pt-dot" />}</Link>
+        <Link href="/reports" aria-current={active("/reports") ? "page" : undefined}><Icon n="reports" /><span>Reports</span></Link>
+        <button type="button" className={moreOn ? "on" : ""} aria-expanded={more} onClick={() => setMore((m) => !m)}><Icon n="more" /><span>More</span>{needsKyc && <i className="pt-dot" />}</button>
       </nav>
     </div>
   );
