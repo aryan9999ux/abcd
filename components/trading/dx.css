@@ -116,3 +116,7 @@
 .dx-seg { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); }
 .dx-seg button { border: 0; background: none; color: var(--muted); font: 500 .74rem var(--f-body); padding: 3px 10px; border-radius: 6px; cursor: pointer; }
 .dx-seg button[aria-pressed="true"] { background: var(--surface3); color: var(--fg); }
+/* Price big and white; change smaller and green/red */
+.dx-iq > span.tr-mono { color: var(--fg); font-size: 1.05rem; font-weight: 600; }
+.dx-iq > small.tr-mono { font-size: .78rem; font-weight: 500; }
+.dx-iq > small.tr-up { color: var(--up); } .dx-iq > small.tr-down { color: var(--down); }
