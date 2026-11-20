@@ -229,10 +229,11 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   /** Move or clear the stop loss / target of an open position (chart drag or positions list). */
   async function changeLevel(instrument: string, which: "stop" | "target", price: number | null): Promise<boolean> {
     if (!accountId) return false;
-    const res = await postJSON<{ ok: boolean }>("/api/positions/levels", { accountId, instrument, ...(which === "stop" ? { stopLoss: price } : { target: price }) });
+    const res = await postJSON<{ ok: boolean; stopLossWarning?: boolean }>("/api/positions/levels", { accountId, instrument, ...(which === "stop" ? { stopLoss: price } : { target: price }) });
     if (res.ok) {
       const label = which === "stop" ? "Stop loss" : "Target";
       toast.show(price == null ? `${label} removed` : `${label} set to ${num(price)}`);
+      if (res.stopLossWarning) setSlNotice(true);
       data.refetch();
       return true;
     }

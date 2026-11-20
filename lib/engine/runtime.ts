@@ -26,11 +26,11 @@ export async function tickOnce(): Promise<{ ok: boolean; accounts?: number; erro
   }
 }
 
-/** Start the price feed and the 2-second tick job (idempotent). Called lazily from the API routes. */
+/** Start the price feed and the 1-second tick job (idempotent). Called lazily from the API routes. */
 export function ensureEngine() {
   ensureFeed();
   if (!state.timer) {
-    state.timer = setInterval(() => void tickOnce(), 2000);
+    state.timer = setInterval(() => void tickOnce(), 1000);
     state.timer.unref?.();
   }
 }

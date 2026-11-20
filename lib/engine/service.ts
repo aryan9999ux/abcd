@@ -517,11 +517,22 @@ export async function setLevels(userId: string, req: { accountId: string; instru
     const ltp = markFor(ref);
     const buy = p.side === "Buy";
     const patch: { stop_loss?: number | null; take_profit?: number | null } = {};
+    let noStopWarning = false;
     if (req.stopLoss !== undefined) {
       if (req.stopLoss != null && (buy ? req.stopLoss >= ltp : req.stopLoss <= ltp)) {
         throw new HttpError(422, buy ? `The stop loss must be below the current price (${ltp.toFixed(2)}).` : `The stop loss must be above the current price (${ltp.toFixed(2)}).`);
       }
       patch.stop_loss = req.stopLoss;
+      if (req.stopLoss != null) {
+        // moving the stop further away must not get around the per-trade risk limit (a stop that locks in profit is always fine)
+        const atRisk = (buy ? p.avg_price - req.stopLoss : req.stopLoss - p.avg_price) * p.qty;
+        const maxRisk = round2((ctx.acct.balance * ctx.acct.rules.riskPerTradePct) / 100);
+        if (atRisk > maxRisk) throw new HttpError(422, `Risk is too high: ₹${Math.ceil(atRisk).toLocaleString("en-IN")} at that stop, the limit is ₹${Math.floor(maxRisk).toLocaleString("en-IN")} (${ctx.acct.rules.riskPerTradePct}% of balance).`);
+      } else if (p.stop_loss != null) {
+        // removing the stop counts as trading without one: a warning first, then the account closes
+        await handleNoStop(ctx);
+        noStopWarning = true;
+      }
     }
     if (req.target !== undefined) {
       if (req.target != null && (buy ? req.target <= ltp : req.target >= ltp)) {
@@ -531,7 +542,8 @@ export async function setLevels(userId: string, req: { accountId: string; instru
     }
     if (Object.keys(patch).length === 0) throw new HttpError(400, "Nothing to change.");
     must(await ctx.sb.from("positions").update(patch).eq("id", p.id), "update levels");
-    return { ok: true };
+    if (noStopWarning) must(await ctx.sb.from("trading_accounts").update({ no_sl_warnings: ctx.acct.no_sl_warnings + 1 }).eq("id", ctx.acct.id), "record warning");
+    return { ok: true, ...(noStopWarning ? { stopLossWarning: true } : {}) };
   });
 }
 
