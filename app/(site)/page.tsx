@@ -1,6 +1,7 @@
 import Link from "next/link";
 import "@fontsource-variable/plus-jakarta-sans/index.css";
 import "./lux.css";
+import "./mobile.css";
 import { publicClient } from "@/lib/supabase/public";
 import Footer from "@/components/site/Footer";
 import HeroPreview from "@/components/site/HeroPreview";
@@ -8,7 +9,7 @@ import Motion from "@/components/site/Motion";
 import GoldCard from "@/components/lux/GoldCard";
 import Tiers from "@/components/lux/Tiers";
 import Earn from "@/components/lux/Earn";
-import StickyCta from "@/components/lux/StickyCta";
+import PhoneTerminal from "@/components/lux/PhoneTerminal";
 import Countdown from "@/components/lux/Countdown";
 import type { Plan, PlanPrice } from "@/components/site/types";
 import { inr, sizeLabel } from "@/components/site/format";
@@ -79,7 +80,10 @@ export default async function Home() {
         </div>
       </div>
 
-      <section className="lx-prev" data-reveal><HeroPreview /></section>
+      <section className="lx-prev" data-reveal>
+        <div className="only-d"><HeroPreview /></div>
+        <div className="only-m"><PhoneTerminal /></div>
+      </section>
 
       <section className="blk" id="why">
         <div className="lx-head" data-reveal><h2>Why traders pick us</h2><p>Three simple things. That is it.</p></div>
@@ -185,7 +189,6 @@ export default async function Home() {
         <p className="muted">Read the rules in simple words on the <Link href="/rules">rules page</Link>. Our Terms and Risk Disclosure apply.</p>
       </section>
 
-      <StickyCta label={`Get my account · from ${inr(cheapest)}`} />
       <Footer />
     </main>
   );

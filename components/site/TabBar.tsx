@@ -10,8 +10,9 @@ const I = {
   dash: <><rect x="4" y="4" width="7" height="7" rx="2" /><rect x="13" y="4" width="7" height="5" rx="2" /><rect x="4" y="13" width="7" height="7" rx="2" /><rect x="13" y="11" width="7" height="9" rx="2" /></>,
   term: <path d="M4 19V9m5 10V5m5 14v-7m5 7V8" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" />,
 };
-type Item = { href: string; label: string; icon: keyof typeof I; match: (p: string) => boolean };
+type Item = { href: string; label: string; icon: keyof typeof I; match: (p: string) => boolean; cta?: boolean };
 
 /** iOS-style floating tab bar. Shown on phones only. */
 export default function TabBar({ signedIn }: { signedIn: boolean }) {
@@ -26,15 +27,16 @@ export default function TabBar({ signedIn }: { signedIn: boolean }) {
     : [
         { href: "/", label: "Home", icon: "home", match: (p) => p === "/" },
         { href: "/#plans", label: "Plans", icon: "plans", match: () => false },
+        { href: "/signup", label: "Start", icon: "spark", match: (p) => p.startsWith("/signup"), cta: true },
         { href: "/rules", label: "Rules", icon: "rules", match: (p) => p.startsWith("/rules") },
-        { href: "/login", label: "Log in", icon: "login", match: (p) => p.startsWith("/login") || p.startsWith("/signup") },
+        { href: "/login", label: "Log in", icon: "login", match: (p) => p.startsWith("/login") },
       ];
   return (
     <nav className="tabbar" aria-label="Main">
       {items.map((it) => {
         const on = it.match(path);
         return (
-          <Link key={it.label} href={it.href} aria-current={on ? "page" : undefined}>
+          <Link key={it.label} href={it.href} aria-current={on ? "page" : undefined} className={it.cta ? "tb-cta" : undefined}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{I[it.icon]}</svg>
             <span>{it.label}</span>
           </Link>
