@@ -14,14 +14,41 @@ export interface QuotesState {
   ready: boolean;
 }
 
-/** Polls GET /api/quotes (server-authoritative prices). Pauses while the tab is hidden. */
+/** Live prices over a push stream (/api/stream). Falls back to polling /api/quotes if the stream is unavailable. */
 export function useQuotes(symbols: string[], instruments: string[] = []): QuotesState {
   const [state, setState] = useState<QuotesState>({ quotes: {}, prev: {}, source: null, ts: null, error: null, ready: false });
   const key = symbols.join(",");
   const ikey = [...new Set(instruments)].sort().join(",");
   const failures = useRef(0);
 
+  // Live push: a stream of ticks. If it cannot connect, the polling loop below carries on.
+  const [pushing, setPushing] = useState(true);
   useEffect(() => {
+    if (!pushing) return;
+    let es: EventSource | null = null;
+    let fails = 0;
+    let wasOpen = false;
+    const url = `/api/stream?symbols=${encodeURIComponent(key)}${ikey ? `&instruments=${encodeURIComponent(ikey)}` : ""}`;
+    es = new EventSource(url);
+    es.onopen = () => { wasOpen = true; fails = 0; };
+    es.addEventListener("snap", (e) => {
+      const j = JSON.parse((e as MessageEvent).data) as QuotesResponse;
+      setState((s) => ({ quotes: { ...s.quotes, ...j.quotes }, prev: { ...s.prev, ...(j.prev ?? {}) }, source: j.source, ts: j.ts, error: null, ready: !!j.ready }));
+    });
+    es.addEventListener("t", (e) => {
+      const j = JSON.parse((e as MessageEvent).data) as { ts: number; quotes: Record<string, number> };
+      setState((s) => ({ ...s, quotes: { ...s.quotes, ...j.quotes }, ts: j.ts, error: null }));
+    });
+    es.onerror = () => {
+      fails += 1;
+      // never connected (or keeps failing): fall back to polling rather than showing frozen prices
+      if (!wasOpen || fails >= 3) { es?.close(); es = null; setPushing(false); }
+    };
+    return () => { es?.close(); };
+  }, [key, ikey, pushing]);
+
+  useEffect(() => {
+    if (pushing) return;
     let stop = false;
     let timer: ReturnType<typeof setTimeout>;
     const ctrl = new AbortController();
@@ -51,7 +78,7 @@ export function useQuotes(symbols: string[], instruments: string[] = []): Quotes
       clearTimeout(timer);
       ctrl.abort();
     };
-  }, [key, ikey]);
+  }, [key, ikey, pushing]);
 
   return state;
 }

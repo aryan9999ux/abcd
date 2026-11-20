@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
-import Chat from "@/components/chat/Chat";
 import { Icon } from "./ui";
 import { usePortal } from "./PortalProvider";
 import "./portal.css";
@@ -15,6 +14,7 @@ const NAV: [string, string, string][] = [
   ["/payouts", "Payouts", "payouts"],
   ["/payments", "Payments", "receipt"],
   ["/verification", "Verification", "verify"],
+  ["/help", "Help", "help"],
 ];
 
 export default function PortalShell({ children }: { children: ReactNode }) {
@@ -74,11 +74,13 @@ export default function PortalShell({ children }: { children: ReactNode }) {
         <header className="pt-top">
           <Link className="pt-brand" href="/"><LogoMark size={30} id="ps" /><b><Wordmark /></b></Link>
           <span className="pt-sp" />
+          <Link className="pt-helpbtn" href="/help" aria-label="Help"><Icon n="help" size={18} /></Link>
           <Link className="pt-buy" href="/checkout"><Icon n="plus" size={16} /> Buy account</Link>
           <button className="pt-av btn" onClick={() => setMenu((m) => !m)} aria-label="Account menu" aria-expanded={menu}>{initial}</button>
           {menu && (
             <div className="pt-pop" role="menu">
               <div className="pt-popwho"><b>{user.name}</b><small>{user.email}</small></div>
+              <Link className="pt-poplink" href="/help"><Icon n="help" size={16} /> Help</Link>
               <Link className="pt-poplink" href="/payments"><Icon n="receipt" size={16} /> Payments</Link>
               <button onClick={toggleTheme}><Icon n="sun" size={16} /> Switch theme</button>
               <button onClick={signOut}><Icon n="out" size={16} /> Sign out</button>
@@ -86,7 +88,6 @@ export default function PortalShell({ children }: { children: ReactNode }) {
           )}
         </header>
         <main className="pt-page">{children}</main>
-        <Chat endpoint="/api/ai/support" popup={false} title="Riya, your support" hint="Knows your accounts" greeting="Hi! Ask me anything about your accounts, payouts or payments." />
       </div>
 
       <nav className="pt-tabs" aria-label="Portal">

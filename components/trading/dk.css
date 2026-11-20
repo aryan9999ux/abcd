@@ -69,7 +69,7 @@
 .dk-chartcard { padding: 0; overflow: hidden; }
 .dk-qh { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px; flex-wrap: wrap; }
 .dk-qh b { font: 650 1.05rem var(--f-display); margin-right: 8px; }
-.dk-q { text-align: right; display: grid; } .dk-q .tr-mono { font-size: 1.35rem; font-weight: 650; } .dk-q small { font: 600 .8rem var(--f-mono); }
+.dk-q { text-align: right; display: grid; } .dk-q .tr-mono { font-size: 1.05rem; font-weight: 600; } .dk-q small { font: 500 .78rem var(--f-mono); }
 .dk-chart { height: min(62dvh, 520px); min-height: 380px; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .dk-chart > * { flex: 1; min-height: 0; }
 .dk-cur { display: flex; justify-content: space-between; align-items: center; } .dk-cur span { display: grid; gap: 2px; } .dk-cur b { font: 600 .92rem var(--f-mono); }

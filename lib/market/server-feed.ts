@@ -20,6 +20,11 @@ export interface Detail { ltp: number; bid?: number; ask?: number; oi?: number; 
 interface Feed { source: PriceSource; closes: Record<string, number>; spots: Record<string, number>; stamps: Record<string, number>; detail: Map<string, Detail>; wants: Map<string, number>; ts: number; live: boolean }
 const g = globalThis as unknown as { __propFeed?: Feed };
 
+/** Subscribers to every stored tick (the browser stream). Kept on globalThis so hot reloads do not duplicate it. */
+type Listener = (key: string, ltp: number) => void;
+const bus = ((globalThis as unknown as { __propBus?: Set<Listener> }).__propBus ??= new Set<Listener>());
+export function onPrice(fn: Listener): () => void { bus.add(fn); return () => { bus.delete(fn); }; }
+
 /** Process-wide singleton. One upstream connection, many readers (required by Kite's connection limits). */
 export function ensureFeed(): Feed {
   if (g.__propFeed) return g.__propFeed;
@@ -35,6 +40,7 @@ export function ensureFeed(): Feed {
     feed.stamps[t.symbol] = t.ts;
     feed.ts = t.ts;
     if (t.close && t.close > 0) feed.closes[t.symbol] = t.close;
+    for (const fn of bus) { try { fn(t.symbol, t.ltp); } catch { /* one bad listener must not stop the feed */ } }
     if (t.symbol.includes("|")) feed.detail.set(t.symbol, { ltp: t.ltp, bid: t.bid, ask: t.ask, oi: t.oi, vol: t.vol, ts: t.ts });
   };
   source.subscribe(ALL_SYMBOLS, store, () => {
