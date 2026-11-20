@@ -112,3 +112,7 @@
 /* No capital-letter styling anywhere in the terminal */
 .dx *:not(.dk-st), .dk *:not(.dk-st), .tr *:not(.dk-st) { text-transform: none !important; }
 .dx *, .dk *, .tr * { letter-spacing: 0 !important; }
+
+.dx-seg { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg2); }
+.dx-seg button { border: 0; background: none; color: var(--muted); font: 500 .74rem var(--f-body); padding: 3px 10px; border-radius: 6px; cursor: pointer; }
+.dx-seg button[aria-pressed="true"] { background: var(--surface3); color: var(--fg); }

@@ -108,31 +108,40 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const selPrev = (fo ? prev[key] : prev[sel.underlying]) ?? null;
   const selChg = ltp != null && selPrev != null ? ltp - selPrev : null;
 
+  // Index view: picking Nifty / Bank Nifty / Sensex shows the index chart; orders still go to the futures contract.
+  const [idxView, setIdxView] = useState(false);
+  const idx = idxView && isIndexFO(sel.underlying) && sel.segment === "FUT";
+  const cKey = idx ? `${sel.underlying}|SPOT` : key;
+  const cLtp = idx ? spot : ltp;
+  const cPrev = idx ? (prev[sel.underlying] ?? null) : selPrev;
+  const cChg = cLtp != null && cPrev != null ? cLtp - cPrev : null;
+  const chartTitle = idx ? headlineOf(sel.underlying) : nameOf(sel);
+
   // Live bars: the selected contract's real price folded into the current minute, only while the market is open.
   const live = useRef(new Map<string, Candle[]>());
   const [version, setVersion] = useState(0);
   useEffect(() => {
-    if (ltp == null || !marketOpen(Date.now())) return;
-    live.current.set(key, pushTick(live.current.get(key) ?? [], ltp, Date.now()));
+    if (cLtp == null || !marketOpen(Date.now())) return;
+    live.current.set(cKey, pushTick(live.current.get(cKey) ?? [], cLtp, Date.now()));
     setVersion((v) => v + 1);
-  }, [ltp, key]);
+  }, [cLtp, cKey]);
 
   // Real exchange candles for the chart, refreshed every 30 seconds.
   const loadedRef = useRef(new Set<string>());
   const [hist, setHist] = useState<{ k: string; candles: Candle[]; note: string | null }>({ k: "", candles: [], note: null });
   useEffect(() => {
     if (!contracts.ready && fo) return;
-    if (fo && !sel.expiry) return;
+    if (fo && !idx && !sel.expiry) return;
     let stop = false;
-    const k = `${key}|${tf}`;
+    const k = `${cKey}|${tf}`;
     const loaded = loadedRef.current;
     async function load() {
       try {
-        const q = new URLSearchParams({ underlying: sel.underlying, segment: sel.segment, tf: String(tf) });
+        const q = new URLSearchParams({ underlying: sel.underlying, segment: idx ? "EQ" : sel.segment, tf: String(tf) });
         const again = loaded.has(k);
         if (again) q.set("recent", "1");
-        if (sel.strike != null) q.set("strike", String(sel.strike));
-        if (sel.expiry) q.set("expiry", sel.expiry);
+        if (!idx && sel.strike != null) q.set("strike", String(sel.strike));
+        if (!idx && sel.expiry) q.set("expiry", sel.expiry);
         const res = await fetch(`/api/history?${q}`, { cache: "no-store" });
         const j = (await res.json()) as { ok: boolean; candles?: Candle[]; available?: boolean; error?: string };
         if (stop) return;
@@ -147,7 +156,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
     const t = setInterval(load, 30_000);
     return () => { stop = true; clearInterval(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, tf, contracts.ready]);
+  }, [cKey, tf, contracts.ready]);
 
   const account = data.accounts.find((a) => a.id === accountId) ?? null;
   const plan = plans.find((p) => p.key === account?.plan_key);
@@ -158,10 +167,10 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
   const pending = data.orders.filter((o) => o.account_id === accountId && o.status === "pending" && o.instrument === key);
 
   const candles = useMemo(() => {
-    const h = hist.k === `${key}|${tf}` ? hist.candles : [];
-    return mergeLive(h, live.current.get(key) ?? [], tf);
+    const h = hist.k === `${cKey}|${tf}` ? hist.candles : [];
+    return mergeLive(h, live.current.get(cKey) ?? [], tf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, hist, key, tf]);
+  }, [version, hist, cKey, tf]);
 
   const blockedReason =
     !account ? "Select an account." :
@@ -172,12 +181,14 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
   function pick(ref: InstrumentRef, side?: Side) {
     setSel(ref);
+    setIdxView(false);
     setTicket((t) => ({ ...t, price: "", stopLoss: "", ...(side ? { side } : {}) }));
     setMsg(null);
   }
 
   function pickUnderlying(u: string) {
     pick(isIndexFO(u) ? { underlying: u, segment: "FUT", expiry: contracts.specs[u]?.futExpiries[0] } : { underlying: u, segment: "EQ" });
+    if (isIndexFO(u)) setIdxView(true);
   }
 
   async function sendOrder(side: Side, units: number, orderType: "Market" | "Limit" | "Stop", price?: number): Promise<boolean> {
@@ -412,21 +423,21 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
             <div className="dk-inst">
               <section className="dk-card dk-chartcard">
                 <div className="dk-qh">
-                  <div><b>{nameOf(sel)}</b>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
-                  <div className="dk-q"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={selChg >= 0 ? "tr-up" : "tr-down"}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%) {selChg >= 0 ? "↗" : "↘"}</small>}</div>
+                  <div><b>{chartTitle}</b>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
+                  <div className="dk-q"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={cChg >= 0 ? "tr-up" : "tr-down"}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%) {cChg >= 0 ? "↗" : "↘"}</small>}</div>
                 </div>
                 <div className="dk-chart">
                   <ChartPanel
-                    title={nameOf(sel)}
+                    title={chartTitle}
                     candles={candles}
-                    last={ltp}
-                    position={curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
-                    pending={pending.filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
+                    last={cLtp}
+                    position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                    pending={(idx ? [] : pending).filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
                     tf={tf}
                     onTf={setTf}
                     qtyLabel={fo ? "Lots" : "Shares"}
-                    disabled={!!blockedReason}
-                    disabledText={blockedReason ?? undefined}
+                    disabled={!!blockedReason || idx}
+                    disabledText={idx ? "This is the index chart. Trade the futures from the ticket, or switch to Futures." : blockedReason ?? undefined}
                     note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
                     onOrder={chartOrder}
                   />
@@ -620,8 +631,11 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
 
         <section className="dx-panel dx-centre">
           <div className="dx-ih">
-            <div className="dx-in"><h1>{nameOf(sel)}</h1></div>
-            <div className="dx-iq"><span className="tr-mono">{ltp == null ? "—" : num(ltp)}</span>{selChg != null && selPrev != null && <small className={"tr-mono " + (selChg >= 0 ? "tr-up" : "tr-down")}>{selChg >= 0 ? "+" : ""}{num(selChg)} ({((selChg / selPrev) * 100).toFixed(2)}%)</small>}</div>
+            <div className="dx-in"><h1>{chartTitle}</h1></div>
+            <div className="dx-iq"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={"tr-mono " + (cChg >= 0 ? "tr-up" : "tr-down")}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%)</small>}</div>
+            {isIndexFO(sel.underlying) && sel.segment === "FUT" && centre === "chart" && (
+              <div className="dx-seg" role="group" aria-label="Chart source"><button aria-pressed={idx} onClick={() => setIdxView(true)}>Index</button><button aria-pressed={!idx} onClick={() => setIdxView(false)}>Futures</button></div>
+            )}
             <div className="dx-tabs" role="tablist">
               <button role="tab" aria-selected={centre === "chart"} onClick={() => setCentre("chart")}>Chart</button>
               <button role="tab" aria-selected={centre === "chain"} onClick={() => { if (!selSpec) pickUnderlying("NIFTY"); setCentre("chain"); }}>Option chain</button>
@@ -630,16 +644,16 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           <div className="dx-cbody tr-cbody">
             {centre === "chart" ? (
               <ChartPanel
-                title={nameOf(sel)}
+                title={chartTitle}
                 candles={candles}
-                last={ltp}
-                position={curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
-                pending={pending.filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
+                last={cLtp}
+                position={!idx && curPos && ltp != null ? { entry: curPos.avg_price, side: curPos.side, pnl: (ltp - curPos.avg_price) * curPos.qty * (curPos.side === "Buy" ? 1 : -1) } : null}
+                pending={(idx ? [] : pending).filter((o) => o.price != null).map((o) => ({ id: o.id, side: o.side, price: o.price as number }))}
                 tf={tf}
                 onTf={setTf}
                 qtyLabel={fo ? "Lots" : "Shares"}
-                disabled={!!blockedReason}
-                disabledText={blockedReason ?? undefined}
+                disabled={!!blockedReason || idx}
+                disabledText={idx ? "This is the index chart. Trade the futures from the ticket, or switch to Futures." : blockedReason ?? undefined}
                 note={noPrices ? "Waiting for prices…" : hist.note ?? "Loading the chart from the exchange…"}
                 onOrder={chartOrder}
               />
