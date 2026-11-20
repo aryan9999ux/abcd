@@ -1,4 +1,5 @@
 "use client";
+import { HeroArt } from "./HeroArt";
 import Link from "next/link";
 import { inr } from "@/components/trading/format";
 import AccountCard from "./AccountCard";
@@ -19,24 +20,24 @@ export default function OverviewPage() {
       <>
         <PageHead title={`${greet()}, ${first}`} sub="You’re set up. Choose how you want to start." />
         <section className="pt-hero">
-          <div><Badge tone="brand">Welcome</Badge></div>
-          <h2>Trade up to ₹10L of our capital. Keep 80% of the profit.</h2>
-          <p>Pass a simple test on a simulated account. Once you’re funded, you can request a payout every 14 days. If a trade goes wrong, you only lose your fee.</p>
+          <div className="pt-hero-copy"><div><Badge tone="brand">Welcome</Badge></div><h2>Trade up to ₹10L of our capital. Keep 80% of the profit.</h2>
+          <p>Pass a simple test on a simulated account. Once you’re funded, you can request a payout every 14 days. If a trade goes wrong, you only lose your fee.</p></div>
+          <HeroArt />
         </section>
         <div className="pt-paths">
-          <section className="pt-path">
-            <Badge>Free</Badge>
-            <h3>Try a demo first</h3>
-            <p>3 days on a ₹10L account with live NSE and BSE prices and the real rules of the plan you pick.</p>
-            <ul><li><Icon n="check" size={16} />No payment needed</li><li><Icon n="check" size={16} />Same terminal as a real account</li><li><Icon n="check" size={16} />One demo per person</li></ul>
-            <Link className="pt-btn" href="/demo">Start free demo</Link>
-          </section>
           <section className="pt-path hot">
             <Badge tone="brand">Real account</Badge>
             <h3>Get funded</h3>
             <p>Pick a plan and a size. Pay one fee, with no monthly charges. Your fee comes back with your payout.</p>
             <ul><li><Icon n="check" size={16} />{fromPrice ? `From ${inr(fromPrice)}, one time` : "One-time fee"}</li><li><Icon n="check" size={16} />Payouts every 14 days</li><li><Icon n="check" size={16} />Loss limits protect you</li></ul>
             <Link className="pt-btn primary" href="/checkout">Choose an account</Link>
+          </section>
+          <section className="pt-path">
+            <Badge>Free</Badge>
+            <h3>Try a demo first</h3>
+            <p>3 days on a ₹10L account with live NSE and BSE prices and the real rules of the plan you pick.</p>
+            <ul><li><Icon n="check" size={16} />No payment needed</li><li><Icon n="check" size={16} />Same terminal as a real account</li><li><Icon n="check" size={16} />One demo per person</li></ul>
+            <Link className="pt-btn" href="/demo">Start free demo</Link>
           </section>
         </div>
       </>

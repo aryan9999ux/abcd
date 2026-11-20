@@ -192,3 +192,26 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pt-cl-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 16px; } .pt-cl-foot p { margin: 0; font-size: .92rem; line-height: 1.6; } .pt-cl-foot small { color: var(--muted); }
 @media (max-width: 800px) { .pt-cl-cols { grid-template-columns: 1fr; gap: 14px; } }
 .pt-why { margin: 0; padding: 10px 12px; border-radius: 10px; font-size: .86rem; line-height: 1.5; background: color-mix(in srgb, var(--down) 8%, transparent); border: 1px solid color-mix(in srgb, var(--down) 35%, var(--line)); } .pt-why a { color: var(--hi); font-weight: 650; }
+
+/* Welcome hero: copy left, animated curve right */
+.pt-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 28px; }
+.pt-hero-copy { display: grid; gap: 18px; align-content: center; }
+.pt-art { position: relative; min-height: 240px; color: var(--fg); }
+.pt-art-orb { position: absolute; inset: 8% 6%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 45%, transparent), transparent); filter: blur(24px); animation: art-breathe 6s ease-in-out infinite; }
+.pt-art-svg { position: relative; width: 100%; height: auto; display: block; }
+.pt-art-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: art-draw 5s ease-in-out infinite; }
+.pt-art-area { opacity: 0; animation: art-fill 5s ease-in-out infinite; }
+.pt-art-dot { opacity: 0; transform-origin: 420px 36px; animation: art-dot 5s ease-in-out infinite; }
+.pt-art-bar { transform-box: fill-box; transform-origin: bottom; animation: art-bar 3.6s ease-in-out infinite; }
+.pt-art-chip { position: absolute; display: grid; gap: 1px; padding: 9px 14px; border-radius: 14px; background: color-mix(in srgb, var(--surface) 78%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0, 0, 0, .25); animation: art-float 6s ease-in-out infinite; }
+.pt-art-chip b { font: 700 1.05rem var(--f-display); letter-spacing: 0; } .pt-art-chip span { font-size: .72rem; color: var(--muted); }
+.pt-art-chip.c1 { left: 2%; top: 6%; } .pt-art-chip.c2 { right: 0; top: 34%; animation-delay: -2s; } .pt-art-chip.c3 { left: 14%; bottom: 2%; animation-delay: -4s; }
+@keyframes art-draw { 0% { stroke-dashoffset: 1; } 55%, 100% { stroke-dashoffset: 0; } }
+@keyframes art-fill { 0%, 25% { opacity: 0; } 60%, 100% { opacity: 1; } }
+@keyframes art-dot { 0%, 52% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.4); } 75%, 100% { opacity: 1; transform: scale(1); } }
+@keyframes art-bar { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.62); } }
+@keyframes art-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes art-breathe { 0%, 100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+@media (max-width: 900px) { .pt-hero { grid-template-columns: 1fr; } .pt-art { min-height: 180px; max-width: 420px; } }
+@media (prefers-reduced-motion: reduce) { .pt-art * { animation: none !important; } .pt-art-line { stroke-dashoffset: 0; } .pt-art-area, .pt-art-dot { opacity: 1; } }
+.pt-art-svg { overflow: visible; }
