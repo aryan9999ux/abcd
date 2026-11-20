@@ -32,6 +32,7 @@ import { useMedia } from "./useMedia";
 import type { AccountRow, Candle, PlanRow } from "./types";
 import { useContracts } from "./useContracts";
 import { EmptyState } from "./EmptyState";
+import { Arrow } from "./Arrow";
 import { useQuotes } from "./useQuotes";
 import { useToast } from "./useToast";
 import { useTraderData } from "./useTraderData";
@@ -424,7 +425,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
               <section className="dk-card dk-chartcard">
                 <div className="dk-qh">
                   <div><b>{chartTitle}</b>{source === "demo" && <span className="tr-pill">Sample prices</span>}</div>
-                  <div className="dk-q"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={cChg >= 0 ? "tr-up" : "tr-down"}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%) {cChg >= 0 ? "↗" : "↘"}</small>}</div>
+                  <div className="dk-q"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={cChg >= 0 ? "tr-up" : "tr-down"}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%) <Arrow up={cChg >= 0} /></small>}</div>
                 </div>
                 <div className="dk-chart">
                   <ChartPanel
@@ -581,7 +582,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
           {([["NIFTY", "Nifty 50"], ["BANKNIFTY", "Bank Nifty"], ["SENSEX", "Sensex"]] as const).map(([k, label]) => { const c = chg(k); return (
             <button key={k} onClick={() => { pickUnderlying(k); setCentre("chart"); }}>
               <small>{label}</small><Px v={c?.px} className="tr-mono" text={c ? num(c.px) : "—"} />
-              <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "+" : ""}${num(c.d)} (${c.pc.toFixed(2)}%) ${c.d >= 0 ? "↗" : "↘"}` : ""}</span>
+              <span className={"tr-mono " + (c ? (c.d >= 0 ? "tr-up" : "tr-down") : "")}>{c ? `${c.d >= 0 ? "+" : ""}${num(c.d)} (${c.pc.toFixed(2)}%)` : ""}{c && <Arrow up={c.d >= 0} />}</span>
             </button>
           ); })}
         </div>

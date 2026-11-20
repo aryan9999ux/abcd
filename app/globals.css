@@ -12,7 +12,7 @@
   --f-display: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --serif: var(--f-display);
   --f-body: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --f-mono: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; /* numerals: sans, tabular, slanted (see .num rules) */
+  --f-mono: "Plus Jakarta Sans Variable", "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif; /* numerals: geometric sans, tabular (broker-style) */
   --r: 10px; --ease: cubic-bezier(.2,.7,.2,1); --spring: cubic-bezier(.34,1.56,.64,1);
   --g1: rgba(196,176,255,.08); --g2: rgba(196,176,255,.035); --gb: rgba(196,176,255,.13); --gh: rgba(220,205,255,.2); --gs: 0 28px 60px -32px rgba(0,0,0,.8); --glow: .4;
   color-scheme: dark;
@@ -582,12 +582,10 @@ header.top nav.links a, header.top .brand { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .spin, .splash-ring i, .splash-ring b { animation-duration: 2s !important; } }
 .splash.inline { position: static; min-height: 60dvh; background: none; backdrop-filter: none; }
 
-/* Numbers: semibold, tabular, slightly slanted, like broker price boards. Words stay upright. */
+/* Numbers: geometric sans, medium weight, tabular so columns line up. Upright, like broker price boards. */
 .tr-mono, .mono, .tr-wrow .px, .dx-wrow .px, .dk-row .px, .tr td.cell, .tr .tr-chain td.k, .tr-strip .v, .tr-tile .v,
 .tr-equity .n, .tr-equity .row b, .dx-total, .dk-delta, .dk-trio b, .dk-q .tr-mono, .dx-acct b, .tr input[type="number"],
-.tr-meter small .tr-mono, .tr .m small b, .sizebar button {
-  font-style: italic !important; font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1, "zero" 0;
-}
-.tr-mono, .mono { font-weight: 600; letter-spacing: -.01em; }
-.tr input[type="number"]::placeholder, .tr input::placeholder { font-style: normal !important; font-family: var(--f-body); }
-.dx-dtabs i, .dk-nav button i { font-style: normal !important; }
+.tr-meter small .tr-mono, .tr .m small b, .sizebar button { font-style: normal; font-variant-numeric: tabular-nums lining-nums; }
+.tr-mono, .mono { font-weight: 500; letter-spacing: 0; }
+.tr input::placeholder { font-family: var(--f-body); }
+.tr-arrow { display: inline-block; width: .95em; height: .95em; vertical-align: -.1em; margin-left: 6px; }
