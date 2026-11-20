@@ -1,51 +1,14 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { labelOf, headlineOf } from "@/components/trading/constants";
-import { inr, num } from "@/components/trading/format";
-import { useQuotes } from "@/components/trading/useQuotes";
+import { inr } from "@/components/trading/format";
 import { compact } from "./calc";
 import { usePortal } from "./PortalProvider";
 import { Icon } from "./ui";
 
-const STRIP = ["NIFTY", "BANKNIFTY", "SENSEX", "RELIANCE", "HDFCBANK"];
-
-/** Live index and stock prices in a thin bar above every portal page. */
-export function MarketStrip() {
-  const { quotes, prev } = useQuotes(STRIP);
-  const last = useRef<Record<string, number>>({});
-  const [flash, setFlash] = useState<Record<string, "up" | "dn">>({});
-  useEffect(() => {
-    const f: Record<string, "up" | "dn"> = {};
-    for (const k of STRIP) {
-      const q = quotes[k], p = last.current[k];
-      if (q != null && p != null && q !== p) f[k] = q > p ? "up" : "dn";
-      if (q != null) last.current[k] = q;
-    }
-    if (!Object.keys(f).length) return;
-    setFlash(f);
-    const t = setTimeout(() => setFlash({}), 600);
-    return () => clearTimeout(t);
-  }, [quotes]);
-
-  return (
-    <div className="ms" aria-label="Market">
-      <div className="ms-run">
-        {STRIP.map((k) => {
-          const q = quotes[k], p = prev[k];
-          const ch = q != null && p ? ((q - p) / p) * 100 : null;
-          return (
-            <Link key={k} href="/terminal" className={`ms-i ${flash[k] ?? ""}`}>
-              <small>{k === "NIFTY" || k === "BANKNIFTY" || k === "SENSEX" ? headlineOf(k) : labelOf(k)}</small>
-              <b>{q != null ? num(q) : "—"}</b>
-              {ch != null && <em className={ch >= 0 ? "up" : "down"}>{ch >= 0 ? "▲" : "▼"} {Math.abs(ch).toFixed(2)}%</em>}
-            </Link>
-          );
-        })}
-      </div>
-      <Bell className="ms-bell" />
-    </div>
-  );
+/** Desktop only: a slim bar that holds the notification bell. On phones the bell sits in the header. */
+export function BellBar() {
+  return <div className="ms"><span className="ms-sp" /><Bell className="ms-bell" /></div>;
 }
 
 interface Note { id: string; tone: "ok" | "warn" | "bad" | "brand"; title: string; body: string; href: string; rank: number }

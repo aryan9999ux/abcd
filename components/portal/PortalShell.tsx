@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { Icon } from "./ui";
-import { Bell, MarketStrip } from "./PortalBar";
+import { Bell, BellBar } from "./PortalBar";
 import { usePortal } from "./PortalProvider";
 import "./portal.css";
 
@@ -103,7 +103,7 @@ export default function PortalShell({ children }: { children: ReactNode }) {
             </div>
           )}
         </header>
-        <MarketStrip />
+        <BellBar />
         <main className="pt-page">{children}</main>
       </div>
 
