@@ -188,11 +188,6 @@
   .lux .lx-final p { font-size: .82rem; line-height: 1.55; }
   .lux .lx-final .lx-pill { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); padding: 7px 14px; }
 
-  /* ---------- footer ---------- */
-  .lux footer.foot { margin-top: 14px; padding: 24px 18px; gap: 16px; border-radius: 28px; border: 1px solid rgba(255,255,255,.09); background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); }
-  .lux footer.foot .links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; font-size: .88rem; }
-  .lux footer.foot p { font-size: .74rem; line-height: 1.6; }
-
   /* ---------- bottom bar: five items, Start is the one bright action ---------- */
   .tabbar { width: min(400px, calc(100vw - 24px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 6px; border-radius: 28px; }
   .tabbar a { padding: 8px 2px 7px; border-radius: 22px; font-size: .64rem; min-height: 52px; align-content: center; }
