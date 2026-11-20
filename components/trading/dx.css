@@ -120,3 +120,19 @@
 .dx-iq > span.tr-mono { color: var(--fg); font-size: 1.05rem; font-weight: 600; }
 .dx-iq > small.tr-mono { font-size: .78rem; font-weight: 500; }
 .dx-iq > small.tr-up { color: var(--up); } .dx-iq > small.tr-down { color: var(--down); }
+
+/* ===== Final quote typography (broker-style): one size per row, one centre line ===== */
+.dx .dx-idx button { align-items: center; gap: 9px; line-height: 1.25; }
+.dx .dx-idx button > * { font-size: .92rem; line-height: 1.25; display: inline-flex; align-items: center; margin: 0; }
+.dx .dx-idx small { font-family: var(--f-body); font-weight: 500; color: var(--muted); }
+.dx .dx-idx button > .tr-mono { font-weight: 600; color: var(--fg); }
+.dx .dx-idx button > span:last-child { font-weight: 500; }
+.dx .dx-idx .tr-up { color: var(--up) !important; } .dx .dx-idx .tr-down { color: var(--down) !important; }
+.dx .dx-idx { gap: 14px; }
+
+.dx .dx-ih { align-items: center; gap: 12px; }
+.dx .dx-in, .dx .dx-iq { display: flex; align-items: center; line-height: 1.25; }
+.dx .dx-in h1 { font: 500 1rem var(--f-body); color: var(--muted); margin: 0; line-height: 1.25; }
+.dx .dx-iq { gap: 10px; }
+.dx .dx-iq > span.tr-mono { font-size: 1.12rem; font-weight: 600; line-height: 1.25; color: var(--fg); }
+.dx .dx-iq > small.tr-mono { font-size: .95rem; font-weight: 500; line-height: 1.25; display: inline-flex; align-items: center; }

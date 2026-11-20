@@ -633,7 +633,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
         <section className="dx-panel dx-centre">
           <div className="dx-ih">
             <div className="dx-in"><h1>{chartTitle}</h1></div>
-            <div className="dx-iq"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={"tr-mono " + (cChg >= 0 ? "tr-up" : "tr-down")}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%)</small>}</div>
+            <div className="dx-iq"><span className="tr-mono">{cLtp == null ? "—" : num(cLtp)}</span>{cChg != null && cPrev != null && <small className={"tr-mono " + (cChg >= 0 ? "tr-up" : "tr-down")}>{cChg >= 0 ? "+" : ""}{num(cChg)} ({((cChg / cPrev) * 100).toFixed(2)}%)<Arrow up={cChg >= 0} /></small>}</div>
             {isIndexFO(sel.underlying) && sel.segment === "FUT" && centre === "chart" && (
               <div className="dx-seg" role="group" aria-label="Chart source"><button aria-pressed={idx} onClick={() => setIdxView(true)}>Index</button><button aria-pressed={!idx} onClick={() => setIdxView(false)}>Futures</button></div>
             )}
