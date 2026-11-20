@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { inr } from "@/components/trading/format";
 import { compact } from "./calc";
 import { usePortal } from "./PortalProvider";
@@ -14,14 +15,22 @@ export function Bell({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState<string[]>([]);
   const box = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
   useEffect(() => { try { setSeen(JSON.parse(localStorage.getItem("seen-notes") || "[]")); } catch { /* storage blocked */ } }, []);
   useEffect(() => {
     if (!open) return;
-    const off = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    const off = (e: MouseEvent) => { const t = e.target as Node; if (box.current && !box.current.contains(t) && !(layer.current && layer.current.contains(t))) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", off);
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = document.documentElement, prev = h.style.overflow;
+    h.style.overflow = "hidden";
+    return () => { h.style.overflow = prev; };
   }, [open]);
 
   const notes = useMemo<Note[]>(() => {
@@ -70,22 +79,25 @@ export function Bell({ className = "" }: { className?: string }) {
       <button className="bell-b" onClick={toggle} aria-label={unseen ? `Notifications, ${unseen} new` : "Notifications"} aria-expanded={open}>
         <Icon n="bell" size={19} />{unseen > 0 && <i>{unseen > 9 ? "9+" : unseen}</i>}
       </button>
-      {open && <div className="bell-scrim" onClick={toggle} />}
-      {open && (
-        <div className="bell-pop" role="dialog" aria-label="Notifications">
-          <div className="bell-h"><b>Notifications</b><button onClick={toggle} aria-label="Close">✕</button></div>
-          {notes.length === 0 ? <p className="bell-empty">You are all caught up.</p> : (
-            <div className="bell-list">
-              {notes.map((n) => (
-                <Link key={n.id} href={n.href} className={`bell-n ${n.tone}`} onClick={() => setOpen(false)}>
-                  <span className="bell-dot" />
-                  <span><b>{n.title}</b><small>{n.body}</small></span>
-                  {!seen.includes(n.id) && <em>New</em>}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+      {open && typeof document !== "undefined" && createPortal(
+        <div className={`bell-layer ${className}`} ref={layer}>
+          <div className="bell-scrim" onClick={toggle} />
+          <div className="bell-pop" role="dialog" aria-label="Notifications">
+            <div className="bell-h"><b>Notifications</b><button onClick={toggle} aria-label="Close">✕</button></div>
+            {notes.length === 0 ? <p className="bell-empty">You are all caught up.</p> : (
+              <div className="bell-list">
+                {notes.map((n) => (
+                  <Link key={n.id} href={n.href} className={`bell-n ${n.tone}`} onClick={() => setOpen(false)}>
+                    <span className="bell-dot" />
+                    <span><b>{n.title}</b><small>{n.body}</small></span>
+                    {!seen.includes(n.id) && <em>New</em>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
