@@ -18,8 +18,10 @@ export function Bell({ className = "" }: { className?: string }) {
   useEffect(() => {
     if (!open) return;
     const off = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     document.addEventListener("mousedown", off);
-    return () => document.removeEventListener("mousedown", off);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", off); document.removeEventListener("keydown", esc); };
   }, [open]);
 
   const notes = useMemo<Note[]>(() => {
@@ -68,6 +70,7 @@ export function Bell({ className = "" }: { className?: string }) {
       <button className="bell-b" onClick={toggle} aria-label={unseen ? `Notifications, ${unseen} new` : "Notifications"} aria-expanded={open}>
         <Icon n="bell" size={19} />{unseen > 0 && <i>{unseen > 9 ? "9+" : unseen}</i>}
       </button>
+      {open && <div className="bell-scrim" onClick={toggle} />}
       {open && (
         <div className="bell-pop" role="dialog" aria-label="Notifications">
           <div className="bell-h"><b>Notifications</b><button onClick={toggle} aria-label="Close">✕</button></div>

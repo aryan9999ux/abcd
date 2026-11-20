@@ -397,3 +397,14 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 .pt-side nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: none; -ms-overflow-style: none; }
 .pt-side nav::-webkit-scrollbar { display: none; }
 .pt-side-foot { flex: none; margin-top: 0; }
+
+/* desktop: notifications open as a centred card over a blurred page */
+.bell-scrim { display: none; }
+@media (min-width: 1001px) {
+  .bell-scrim { display: block; position: fixed; inset: 0; z-index: 190; background: rgba(6,4,16,.55); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); animation: bellFade .18s ease-out; }
+  .bell-side .bell-pop { position: fixed; z-index: 200; left: 50%; top: 50%; right: auto; bottom: auto; width: 460px; max-width: calc(100vw - 48px); transform: translate(-50%, -50%); animation: bellPop .2s ease-out; border-radius: 22px; }
+  .bell-side .bell-list { max-height: min(60vh, 460px); }
+  .bell-side .bell-h { padding: 18px 20px; } .bell-side .bell-h b { font-size: 1.05rem; } .bell-side .bell-n { padding: 16px 20px; }
+}
+@keyframes bellFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bellPop { from { opacity: 0; transform: translate(-50%, -48%) scale(.97); } to { opacity: 1; transform: translate(-50%, -50%); } }
