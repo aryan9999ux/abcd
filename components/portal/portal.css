@@ -384,3 +384,10 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 @media (max-width: 1100px) { .sb-grid { grid-template-columns: 1fr; } .sb-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .sb-ax { font-size: 19px; } }
 @media (max-width: 560px) { .sb-stats { grid-template-columns: 1fr 1fr; } .sb-spot { justify-items: start; } .sb-top .pt-tabsbar { width: 100%; } .sb-top .pt-tabsbar button { flex: 1; padding: 9px 6px; font-size: .8rem; } }
+
+/* desktop: the bell lives in the sidebar profile row, no top bar */
+.ms { display: none; }
+.bell-side { margin-left: auto; }
+.bell-side .bell-b { width: 36px; height: 36px; border-radius: 10px; }
+.bell-side .bell-pop { right: auto; left: 0; top: auto; bottom: 46px; width: 320px; }
+@media (max-width: 1000px) { .bell-side { display: none; } }

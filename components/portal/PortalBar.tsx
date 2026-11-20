@@ -6,11 +6,6 @@ import { compact } from "./calc";
 import { usePortal } from "./PortalProvider";
 import { Icon } from "./ui";
 
-/** Desktop only: a slim bar that holds the notification bell. On phones the bell sits in the header. */
-export function BellBar() {
-  return <div className="ms"><span className="ms-sp" /><Bell className="ms-bell" /></div>;
-}
-
 interface Note { id: string; tone: "ok" | "warn" | "bad" | "brand"; title: string; body: string; href: string; rank: number }
 
 /** Alerts built from what is already on the trader's account: limits, payouts, identity check, payments. */
