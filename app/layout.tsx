@@ -7,7 +7,7 @@ import Ambient from "@/components/site/Ambient";
 
 export const metadata = {
   title: "Edge Funded",
-  description: "Simulated funded trading accounts for Indian markets.",
+  description: "Funded trading accounts for Indian markets. Trade our capital, keep the profit.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

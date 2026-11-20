@@ -266,3 +266,4 @@ body:has(.lux) .btn.primary { background: linear-gradient(135deg, #a47bff, #7c4d
 .lx-demo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; max-width: 960px; margin: 28px auto 0; padding: 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .lx-demo p { margin: 0; font-size: .95rem; color: var(--muted); } .lx-demo b { color: var(--fg); }
 @media (max-width: 640px) { .lx-demo { flex-direction: column; align-items: stretch; text-align: center; } .lx-demo .btn { justify-content: center; } }
+

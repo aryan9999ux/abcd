@@ -94,7 +94,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
       </p>
       {signup && (
         <p className="muted" style={{ fontSize: ".76rem" }}>
-          Accounts are simulated. Edge Funded is not a broker and does not give investment advice.
+          By continuing you agree to our <Link href="/terms" style={{ color: "var(--accent)" }}>Terms</Link> and <Link href="/privacy" style={{ color: "var(--accent)" }}>Privacy Policy</Link>.
         </p>
       )}
     </form>

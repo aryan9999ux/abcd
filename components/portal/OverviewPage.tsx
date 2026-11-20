@@ -21,7 +21,7 @@ export default function OverviewPage() {
         <PageHead title={`${greet()}, ${first}`} sub="You’re set up. Choose how you want to start." />
         <section className="pt-hero">
           <div className="pt-hero-copy"><div><Badge tone="brand">Welcome</Badge></div><h2>Trade up to ₹10L of our capital. Keep 80% of the profit.</h2>
-          <p>Pass a simple test on a simulated account. Once you’re funded, you can request a payout every 14 days. If a trade goes wrong, you only lose your fee.</p></div>
+          <p>Pass a simple test. Once you’re funded, you can request a payout every 14 days. If a trade goes wrong, you only lose your fee.</p></div>
           <HeroArt />
         </section>
         <div className="pt-paths">

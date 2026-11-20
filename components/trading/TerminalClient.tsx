@@ -600,7 +600,7 @@ export default function TerminalClient({ initialAccounts, plans, initialAccountI
                 <button className="dk-row" onClick={toggleTheme}><span><b>Switch theme</b><small>Light or dark</small></span><span>›</span></button>
                 <button className="dk-row" onClick={signOut}><span><b>Sign out</b></span><span>›</span></button>
               </section>
-              <p className="dk-fine">Simulated trading account. Stocks use {STOCK_LEVERAGE}× intraday leverage; futures and short options use a sample margin model.</p>
+              <p className="dk-fine">Stocks use {STOCK_LEVERAGE}× intraday leverage; futures and short options use a sample margin model.</p>
             </div>
           )}
         </main>

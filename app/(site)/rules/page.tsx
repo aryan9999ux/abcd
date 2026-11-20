@@ -67,7 +67,7 @@ export default async function Rules() {
       <main className="wrap" style={{ paddingBlock: "56px 80px" }}>
         <h1 style={{ fontSize: "clamp(2.2rem,5vw,3.6rem)" }}>The rules, in plain words</h1>
         <p className="muted" style={{ marginTop: 14, maxWidth: 680 }}>
-          These limits are enforced automatically and shown live on your dashboard. Daily loss and drawdown use the starting balance. Risk per trade uses your current balance. All times are IST. Accounts use simulated capital and rewards are performance rewards under the Terms.
+          These limits are enforced automatically and shown live on your dashboard. Daily loss and drawdown use the starting balance. Risk per trade uses your current balance. All times are IST. Rewards are performance rewards under the Terms.
         </p>
         <RulesView plans={plans} />
       </main>
