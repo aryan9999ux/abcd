@@ -23,7 +23,7 @@ const S: LegalSection[] = [
   { h: "Fees, payment and activation", p: [
     "Plans are sold for a one-time fee shown at checkout in Indian Rupees, inclusive of GST. The fee pays for access to the account, the terminal, the data feed and the evaluation. It is not a deposit or margin and is never added to the account balance.",
     "You pay by UPI to the QR code shown at checkout and submit the UTR (transaction reference) of your payment. We check the payment against our bank records and then open your account and issue a receipt. This normally happens within a few hours on working days, and can take longer outside working hours. The account is not active until we approve the payment.",
-    "Payment must come from a bank account or UPI ID in your own name. Payments from third parties may be rejected and the account may be closed. If a payment cannot be matched or is rejected, we show you the reason and you may submit it again with the correct details.",
+    "Payment must come from a bank account or UPI ID in your own name. Payments from third parties may be rejected and the account may be closed. If a payment cannot be matched or is rejected, no account is opened. We show you the reason and you may submit it again with the correct details.",
     "Promotional prices apply only during the period shown on the website and only to purchases completed in that period.",
   ] },
   { h: "Free demo accounts", p: [
@@ -85,7 +85,7 @@ const S: LegalSection[] = [
     "We may update these Terms and the Rules. A change that makes a rule stricter is announced on the website and by email at least 14 days before it takes effect, and never applies to an evaluation phase or reward cycle that was already running when it was announced. Clarifications, corrections and changes in your favour may take effect immediately. Continuing to use the Services after a change takes effect means you accept it.",
   ] },
   { h: "Ending your access", p: [
-    "You may stop using the Services at any time; fees already paid are not refunded except as the Refund Policy says. We may suspend or end your access immediately for a breach of these Terms, suspected fraud, a chargeback raised without contacting us first, abusive behaviour, or where the law requires it.",
+    "You may stop using the Services at any time; fees already paid are not refunded, except as the Refund Policy says (a duplicate payment). We may suspend or end your access immediately for a breach of these Terms, suspected fraud, a chargeback raised without contacting us first, abusive behaviour, or where the law requires it.",
   ] },
   { h: "Governing law and disputes", p: [
     "These Terms are governed by the laws of India. Before starting any formal proceeding you agree to raise the matter with our support team and allow 30 days to resolve it. Any dispute that is not resolved is subject to the courts of India that have jurisdiction.",

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 import { safeNext } from "./format";
+import { TERMS_VERSION } from "@/lib/legal";
 
 export default function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: string }) {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [entering, setEntering] = useState(false);
+  const [agree, setAgree] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const target = safeNext(next);
@@ -25,6 +27,7 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
     if (signup && !name.trim()) return setError("Enter your full name.");
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError("Enter a valid email address.");
     if (password.length < 8) return setError("Use a password of at least 8 characters.");
+    if (signup && !agree) return setError("Please tick the box to accept the Terms and policies. It is required to create an account.");
     setBusy(true);
     const db = browserClient();
     try {
@@ -33,11 +36,17 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
           email: email.trim(),
           password,
           options: {
-            data: { full_name: name.trim() },
+            data: { full_name: name.trim(), terms_version: TERMS_VERSION, terms_accepted_at: new Date().toISOString() },
             emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(target)}`,
           },
         });
         if (err) return setError(err.message);
+        if (data.user) {
+          // proof of acceptance, kept on our server with the time, IP address, version and the exact words shown
+          const body = JSON.stringify({ userId: data.user.id, email: email.trim() });
+          const send = () => fetch("/api/consent", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+          try { const r = await send(); if (!r.ok) await send(); } catch { try { await send(); } catch { /* the sign-up metadata still carries the acceptance */ } }
+        }
         if (data.session) {
           setEntering(true);
           router.push(target);
@@ -83,6 +92,12 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
         Password
         <input id="auth-password" type="password" autoComplete={signup ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
       </label>
+      {signup && (
+        <label className="cx-chk auth-chk" htmlFor="auth-agree">
+          <input id="auth-agree" type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>I have read and agree to the <Link href="/terms" target="_blank">Terms of Service</Link>, <Link href="/privacy" target="_blank">Privacy Policy</Link>, <Link href="/risk" target="_blank">Risk Disclosure</Link> and <Link href="/refund" target="_blank">Refund Policy</Link>. I am 18 or older and live in India.</span>
+        </label>
+      )}
       {error && <p className="msg err" role="alert">{error}</p>}
       {notice && <p className="msg" role="status">{notice}</p>}
       <button className="btn primary" type="submit" disabled={busy}>
@@ -92,11 +107,6 @@ export default function AuthForm({ mode, next }: { mode: "login" | "signup"; nex
         {signup ? "Already have an account? " : "New here? "}
         <Link href={other} style={{ color: "var(--accent)" }}>{signup ? "Log in" : "Create an account"}</Link>
       </p>
-      {signup && (
-        <p className="muted" style={{ fontSize: ".76rem" }}>
-          By continuing you agree to our <Link href="/terms" style={{ color: "var(--accent)" }}>Terms</Link> and <Link href="/privacy" style={{ color: "var(--accent)" }}>Privacy Policy</Link>.
-        </p>
-      )}
     </form>
     </>
   );

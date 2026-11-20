@@ -18,7 +18,7 @@ const S: LegalSection[] = [
     "Terminal prices come from third-party market data and may be delayed or wrong. Fills are simulated. A stop loss or target closes your position at the live price when it is reached, which in a fast market can be worse than your level.",
   ] },
   { h: "Strict rules end accounts", p: [
-    "The loss limits, risk limits and other rules are enforced automatically and without exception. Touching a limit ends the account, and the fee is not returned if that happens before the reward that returns it.",
+    "The loss limits, risk limits and other rules are enforced automatically and without exception. Touching a limit ends the account, and the fee is not refunded. It comes back only as part of a reward, as shown on the Rules page.",
   ] },
   { h: "Who can use it", p: [
     "The Services are for residents of India aged 18 and above. Nothing on this website is investment advice.",

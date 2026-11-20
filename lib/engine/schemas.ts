@@ -59,6 +59,7 @@ export const paymentSchema = z.object({
   planKey: z.string().min(1).max(40),
   accountSize: z.number().int().positive(),
   utr: z.string().trim().regex(/^[0-9]{12}$/, "Enter the 12-digit UTR (reference number) from your UPI app."),
+  acceptedTerms: z.literal(true, { message: "Please accept the Terms to continue." }),
 });
 
 export const paymentDecisionSchema = z.object({

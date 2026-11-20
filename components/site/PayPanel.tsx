@@ -21,7 +21,7 @@ export default function PayPanel({ pay, amount, planKey, size, label, onClose }:
     e.preventDefault();
     setErr(null); setBusy(true);
     try {
-      const res = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planKey, accountSize: size, utr: utr.trim() }) });
+      const res = await fetch("/api/payments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planKey, accountSize: size, utr: utr.trim(), acceptedTerms: true }) });
       const j = await res.json().catch(() => null);
       if (!j?.ok) setErr(j?.error ?? "Could not send your payment. Try again.");
       else setDone(true);

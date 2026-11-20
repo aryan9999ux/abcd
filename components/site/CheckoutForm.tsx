@@ -102,7 +102,7 @@ export default function CheckoutForm({
         </ul>
         <label className="cx-chk" htmlFor="co-agree">
           <input id="co-agree" type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>I have read and accept the <Link href="/terms" target="_blank">Terms</Link>, <Link href="/risk" target="_blank">Risk Disclosure</Link> and <Link href="/refund" target="_blank">Refund Policy</Link>. I understand the fee is not an investment and is not refundable on request.</span>
+          <span>I have read and accept the <Link href="/terms" target="_blank">Terms of Service</Link>, <Link href="/risk" target="_blank">Risk Disclosure</Link> and <Link href="/refund" target="_blank">Refund Policy</Link>. I understand the fee is not an investment and is not refundable, except for a duplicate payment.</span>
         </label>
         {error && <p className="cx-err" role="alert">{error}</p>}
         <button className="btn primary" type="button" onClick={openPay}>{`Pay ${inr(total)} by UPI`}</button>
