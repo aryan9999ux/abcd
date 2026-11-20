@@ -15,13 +15,13 @@
   .lux .lx-head p { margin-top: 10px; font-size: .98rem; line-height: 1.55; color: var(--muted); }
 
   /* ---------- hero ---------- */
-  .lux .lx-hero { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-height: 0; padding: 22px 0 0; position: relative; }
+  .lux .lx-hero { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-height: 0; padding: 34px 0 0; position: relative; }
   .lux .lx-copy { display: contents; }
   .lux .lx-copy > * { animation: none; }
   .lux .lx-copy .lx-pill { order: 1; align-self: flex-start; display: inline-flex; align-items: center; padding: 7px 14px 7px 12px; font-size: .8rem; border-radius: 999px;
     background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03)); border: 1px solid rgba(255,255,255,.12); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
   .lux .lx-copy .lx-pill .cd-t { margin-left: 4px; }
-  .lux .lx-copy h1 { order: 2; margin: 20px 0 0; font-size: clamp(1.8rem, 8.3vw, 2.25rem); line-height: 1.08; letter-spacing: -.045em; font-weight: 800; text-align: left; text-wrap: balance; }
+  .lux .lx-copy h1 { order: 2; margin: 14px 0 0; font-size: clamp(1.8rem, 8.3vw, 2.25rem); line-height: 1.08; letter-spacing: -.045em; font-weight: 800; text-align: left; text-wrap: balance; }
   .lux .lx-copy h1 span { display: block; }
   .lux .lx-copy .lead { order: 3; margin: 16px 0 0; max-width: none; font-size: 1rem; line-height: 1.55; text-align: left; color: var(--muted); }
 
@@ -140,10 +140,12 @@
   .lux .lx-demo { margin-top: 6px; padding: 16px; border-radius: 20px; gap: 14px; background: rgba(10,7,22,.5); border-color: rgba(255,255,255,.1); }
   .lux .lx-demo p { font-size: .92rem; line-height: 1.5; } .lux .lx-demo .btn { min-height: 48px; border-radius: 14px; }
 
-  /* ---------- for you ---------- */
-  .lux .lx-for li { padding: 18px 0 18px 42px; font-size: 1.02rem; line-height: 1.4; font-weight: 600; border-top-color: rgba(255,255,255,.08); }
-  .lux .lx-for li::before { top: 19px; }
-  .lux .lx-mid { margin-top: 28px; gap: 12px; } .lux .lx-mid .btn { min-height: 54px; border-radius: 16px; font-weight: 700; }
+  /* ---------- for you: swipe cards ---------- */
+  .lux .lx-for { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -18px; padding: 2px 18px 8px; scroll-padding-inline: 18px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .lux .lx-for::-webkit-scrollbar { display: none; }
+  .lux .lx-for li { flex: 0 0 76%; scroll-snap-align: start; min-height: 148px; padding: 58px 16px 18px; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; background: rgba(10,7,22,.5); font-size: .98rem; line-height: 1.4; font-weight: 650; }
+  .lux .lx-for li::before { left: 16px; top: 16px; }
+  .lux .lx-mid { margin-top: 20px; gap: 12px; } .lux .lx-mid .btn { min-height: 54px; border-radius: 16px; font-weight: 700; }
 
   /* ---------- terminal section ---------- */
   .lux .desk { gap: 28px; }
@@ -152,23 +154,24 @@
   .lux .ch-h, .lux .ch-r { grid-template-columns: 1fr 58px 1fr; gap: 10px; }
   .lux .ch-r .ce, .lux .ch-r .pe { height: 12px; } .lux .ch-r.atm .ce, .lux .ch-r.atm .pe { height: 16px; }
 
-  /* ---------- compare ---------- */
-  .lux .lx-vs { border: 0; display: grid; gap: 10px; }
-  .lux .vs-r { grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; background: rgba(10,7,22,.45); align-items: stretch; }
-  .lux .vs-k { grid-column: 1 / -1; font-size: .78rem; font-weight: 700; color: var(--muted); }
-  .lux .vs-a, .lux .vs-b { padding: 11px 12px 12px; border-radius: 14px; font-size: .95rem; line-height: 1.3; }
-  .lux .vs-a { background: rgba(255,255,255,.04); text-decoration: none; color: var(--faint); font-weight: 600; }
-  .lux .vs-a::before, .lux .vs-b::before { margin-bottom: 4px; font-size: .64rem; font-weight: 700; letter-spacing: .02em; }
-  .lux .vs-b { background: linear-gradient(160deg, rgba(139,92,246,.3), rgba(109,61,240,.14)); border: 1px solid rgba(183,156,255,.3); font-weight: 750; font-size: 1rem; }
-  .lux .vs-b::before { color: var(--hi); }
+  /* ---------- compare: one compact table ---------- */
+  .lux .lx-vs { display: block; border: 1px solid rgba(255,255,255,.09); border-radius: 20px; background: rgba(10,7,22,.45); overflow: hidden; }
+  .lux .vs-h, .lux .vs-r { display: grid; grid-template-columns: 27% 1fr 1fr; gap: 10px; padding: 13px 14px; border: 0; align-items: center; }
+  .lux .vs-h { background: rgba(255,255,255,.04); } .lux .vs-h span { font-size: .72rem; font-weight: 700; color: var(--faint); } .lux .vs-h .hi { color: var(--hi); }
+  .lux .vs-r { border-top: 1px solid rgba(255,255,255,.07); background: none; border-radius: 0; }
+  .lux .vs-k { grid-column: auto; font-size: .72rem; font-weight: 700; color: var(--muted); line-height: 1.3; }
+  .lux .vs-a, .lux .vs-b { padding: 0; background: none; border: 0; border-radius: 0; font-size: .8rem; line-height: 1.3; text-decoration: none; }
+  .lux .vs-a::before, .lux .vs-b::before { content: none; display: none; }
+  .lux .vs-a { color: var(--faint); font-weight: 600; } .lux .vs-b { color: var(--fg); font-weight: 750; }
+  .lux .vs-r .vs-b { position: relative; }
 
-  /* ---------- how it works ---------- */
-  .lux .lx-road { gap: 0; }
-  .lux .lx-road::before { left: 21px; top: 24px; bottom: 24px; }
-  .lux .lx-road li { padding-left: 0; grid-template-columns: 44px 1fr; grid-template-areas: "n h" "n p"; column-gap: 16px; row-gap: 3px; padding-bottom: 26px; }
-  .lux .lx-road li:last-child { padding-bottom: 0; }
-  .lux .lx-road .n { grid-area: n; position: relative; left: auto; top: auto; z-index: 1; }
-  .lux .lx-road h3 { grid-area: h; margin: 6px 0 0; font-size: 1.05rem; } .lux .lx-road p { grid-area: p; font-size: .92rem; line-height: 1.5; max-width: none; }
+  /* ---------- how it works: swipe cards ---------- */
+  .lux .lx-road { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -18px; padding: 2px 18px 8px; scroll-padding-inline: 18px; scrollbar-width: none; }
+  .lux .lx-road::-webkit-scrollbar { display: none; } .lux .lx-road::before { display: none; }
+  .lux .lx-road li { flex: 0 0 76%; scroll-snap-align: start; display: block; padding: 16px 16px 18px; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; background: rgba(10,7,22,.5); }
+  .lux .lx-road li.hi { border-color: rgba(183,156,255,.4); background: linear-gradient(160deg, rgba(139,92,246,.25), rgba(10,7,22,.5)); }
+  .lux .lx-road .n { position: relative; left: auto; top: auto; width: 38px; height: 38px; font-size: 1.1rem; margin-bottom: 14px; }
+  .lux .lx-road h3 { margin: 0 0 6px; font-size: 1.05rem; } .lux .lx-road p { margin: 0; font-size: .9rem; line-height: 1.5; max-width: none; }
 
   /* ---------- faq ---------- */
   .lux .lx-faq { border-top-color: rgba(255,255,255,.08); }

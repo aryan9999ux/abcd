@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const I = {
   home: <path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z" />,
@@ -17,6 +18,19 @@ type Item = { href: string; label: string; icon: keyof typeof I; match: (p: stri
 /** iOS-style floating tab bar. Shown on phones only. */
 export default function TabBar({ signedIn }: { signedIn: boolean }) {
   const path = usePathname() || "/";
+  const [onPlans, setOnPlans] = useState(false);
+  // New page always starts at the top (unless the link points at a #section).
+  useEffect(() => { if (!window.location.hash) window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior }); }, [path]);
+  // On the home page, mark Plans while the plans section is on screen.
+  useEffect(() => {
+    setOnPlans(false);
+    if (path !== "/") return;
+    const el = document.getElementById("plans");
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setOnPlans(e.isIntersecting), { rootMargin: "-35% 0px -45% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [path]);
   const items: Item[] = signedIn
     ? [
         { href: "/", label: "Home", icon: "home", match: (p) => p === "/" },
@@ -25,8 +39,8 @@ export default function TabBar({ signedIn }: { signedIn: boolean }) {
         { href: "/checkout", label: "New", icon: "plus", match: (p) => p.startsWith("/checkout") },
       ]
     : [
-        { href: "/", label: "Home", icon: "home", match: (p) => p === "/" },
-        { href: "/#plans", label: "Plans", icon: "plans", match: () => false },
+        { href: "/", label: "Home", icon: "home", match: (p) => p === "/" && !onPlans },
+        { href: "/#plans", label: "Plans", icon: "plans", match: (p) => p === "/" && onPlans },
         { href: "/signup", label: "Start", icon: "spark", match: (p) => p.startsWith("/signup"), cta: true },
         { href: "/rules", label: "Rules", icon: "rules", match: (p) => p.startsWith("/rules") },
         { href: "/login", label: "Log in", icon: "login", match: (p) => p.startsWith("/login") },
