@@ -391,3 +391,14 @@ select.pt-input { appearance: none; background-image: linear-gradient(45deg, tra
 .bell-side .bell-b { width: 36px; height: 36px; border-radius: 10px; }
 .bell-side .bell-pop { right: auto; left: 0; top: auto; bottom: 46px; width: 320px; }
 @media (max-width: 1000px) { .bell-side { display: none; } }
+
+/* sidebar: brand and footer stay put, only the menu scrolls if the screen is short */
+.pt-side { gap: 16px; overflow: hidden; }
+.pt-side nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--fg) 22%, transparent) transparent; margin-right: -6px; padding-right: 6px; }
+.pt-side-foot { flex: none; margin-top: 0; }
+@media (min-width: 1001px) and (max-height: 860px) {
+  .pt-side { padding: 16px 14px 14px; gap: 10px; }
+  .pt-side nav a { padding: 8px 12px; font-size: .88rem; }
+  .pt-side-foot { gap: 10px; } .pt-go { padding: 11px; } .pt-me { padding: 8px 10px; } .pt-mini button { padding: 7px 8px; }
+}
+@media (min-width: 1001px) and (max-height: 700px) { .pt-side nav a { padding: 6px 12px; } }
